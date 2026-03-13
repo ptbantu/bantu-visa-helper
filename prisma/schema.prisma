@@ -1,0 +1,98 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model VisaRecord {
+  id               String   @id @default(uuid())
+  customer_name    String
+  passport_no      String   @unique
+  visa_type        String
+  expiry_date      DateTime
+  is_urgent        Boolean  @default(false)
+  phone            String?
+  whatsapp         String?
+  reminder_enabled Boolean  @default(false)
+  entry_date       DateTime?
+  port_of_entry    String?
+  reminders        Reminder[]
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+}
+
+model SystemLog {
+  id        String   @id @default(uuid())
+  timestamp DateTime @default(now())
+  level     String
+  module    String
+  message   String
+  user      String?
+  metadata  Json?
+
+  @@index([timestamp, level])
+  @@index([module])
+  @@map("system_logs")
+}
+
+model Reminder {
+  id                String      @id @default(uuid())
+  visa_id           String
+  visa              VisaRecord  @relation(fields: [visa_id], references: [id], onDelete: Cascade)
+
+  customer_name     String
+  passport_no       String
+  visa_type         String
+  expiry_date       DateTime
+
+  days_left         Int
+  stage             String
+  status            String
+
+  last_sent_at      DateTime?
+  retry_count       Int         @default(0)
+  is_acknowledged   Boolean     @default(false)
+
+  createdAt         DateTime    @default(now())
+  updatedAt         DateTime    @updatedAt
+
+  @@index([visa_id])
+  @@index([days_left, status])
+  @@map("reminders")
+}
+
+model AppSettings {
+  id                      String   @id @default("singleton")
+
+  email_account           String   @default("admin@bantuqifu.com")
+  email_password          String?
+  email_filter            String   @default("@imigrasi.go.id")
+  email_frequency_minutes Int      @default(5)
+
+  wecom_webhook_url       String?
+  voice_bot_api_key       String?
+  voice_call_time         String   @default("working-hours")
+  voice_receiver          String   @default("wangshuo")
+
+  updatedAt               DateTime @updatedAt
+
+  @@map("app_settings")
+}
+
+model VisaType {
+  id            String   @id @default(uuid())
+  code          String   @unique
+  nameZh        String
+  nameId        String
+  requiresEntry Boolean  @default(false)
+  isActive      Boolean  @default(true)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@index([code])
+  @@index([isActive])
+  @@map("visa_types")
+}

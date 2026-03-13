@@ -1,0 +1,30 @@
+# --- 庞大的静态资源与依赖 ---
+node_modules/**
+.next/**
+public/static/**
+**/*.png
+**/*.jpg
+**/*.jpeg
+**/*.gif
+**/*.pdf
+**/*.zip
+
+# --- 自动生成的文件 (Claude 不需要读，它只需要读 schema.prisma) ---
+prisma/migrations/**
+package-lock.json
+pnpm-lock.yaml
+yarn.lock
+
+# --- 文档与非代码文件 ---
+.git/**
+.github/**
+LICENSE
+*.md
+docs/**
+
+# --- 构建产物 ---
+dist/**
+build/**
+
+# --- 特殊目录 ---
+# 如果你有存放大量历史 SQL 或种子数据的目录，可以忽略以节省上下文空间
