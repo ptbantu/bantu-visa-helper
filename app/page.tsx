@@ -5,6 +5,7 @@ import { useSearchParams, useRouter, usePathname } from "next/navigation";
 import { Search, Copy, Check, AlertCircle, Clock, FileText, User, Calendar, Edit, FileDown, Plane, Briefcase, Building, CreditCard, BellRing, BellOff } from "lucide-react";
 import { differenceInDays, parseISO } from "date-fns";
 import { useLanguage } from "@/src/contexts/LanguageContext";
+import { formatVisaType } from "@/src/lib/visa-type-display";
 
 import { Input } from "@/src/components/ui/input";
 import { Button } from "@/src/components/ui/button";
@@ -33,24 +34,29 @@ import { KitasWorkflow } from "@/src/components/KitasWorkflow";
 import { EditContactDialog } from "@/src/components/EditContactDialog";
 import { SidebarTrigger } from "@/src/components/ui/sidebar";
 
-export const getVisaIcon = (visaType: string) => {
-  if (visaType.includes("B211A") || visaType.includes("访问") || visaType.includes("旅游")) {
+import { VisaType } from "@/src/types/api";
+
+export const getVisaIcon = (visaType: VisaType | string | null | undefined) => {
+  const code = typeof visaType === 'string' ? visaType : visaType?.code || '';
+  const nameZh = typeof visaType === 'string' ? '' : visaType?.nameZh || '';
+
+  if (code.includes("B211A") || nameZh.includes("访问") || nameZh.includes("旅游")) {
     return <Plane className="h-4 w-4 text-blue-500 shrink-0" />;
   }
-  if (visaType.includes("工作") || visaType.includes("C312")) {
+  if (nameZh.includes("工作") || code.includes("C312")) {
     return <Briefcase className="h-4 w-4 text-amber-600 shrink-0" />;
   }
-  if (visaType.includes("投资") || visaType.includes("C313") || visaType.includes("C314")) {
+  if (nameZh.includes("投资") || code.includes("C313") || code.includes("C314")) {
     return <Building className="h-4 w-4 text-emerald-600 shrink-0" />;
   }
-  if (visaType.includes("ITAS") || visaType.includes("KITAS")) {
+  if (code.includes("ITAS") || code.includes("KITAS")) {
     return <CreditCard className="h-4 w-4 text-purple-600 shrink-0" />;
   }
   return <FileText className="h-4 w-4 text-slate-500 shrink-0" />;
 };
 
 function DashboardContent() {
-  const { t } = useLanguage();
+  const { t, language } = useLanguage();
   const searchParams = useSearchParams();
   const router = useRouter();
   const pathname = usePathname();
@@ -361,8 +367,8 @@ function DashboardContent() {
                       <TableCell className="font-mono text-slate-600">{record.passport_no}</TableCell>
                       <TableCell className="whitespace-nowrap">
                         <div className="flex items-center gap-2">
-                          {getVisaIcon(record.visaType?.nameZh || record.visaType?.code || '')}
-                          <span>{record.visaType?.nameZh || record.visaType?.code || '未知'}</span>
+                          {getVisaIcon(record.visaType)}
+                          <span>{formatVisaType(record.visaType, language as 'zh' | 'id')}</span>
                         </div>
                       </TableCell>
                       <TableCell>{record.expiry_date}</TableCell>
@@ -460,8 +466,8 @@ function DashboardContent() {
                   <AlertCircle className="h-4 w-4" /> 签证类型
                 </div>
                 <div className="col-span-2 text-sm text-slate-900 flex items-center gap-2">
-                  {getVisaIcon(selectedRecord.visaType?.nameZh || selectedRecord.visaType?.code || '')}
-                  {selectedRecord.visaType?.nameZh || selectedRecord.visaType?.code || '未知'}
+                  {getVisaIcon(selectedRecord.visaType)}
+                  {formatVisaType(selectedRecord.visaType, language as 'zh' | 'id')}
                 </div>
               </div>
 
