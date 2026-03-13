@@ -120,3 +120,23 @@ model VisaType {
   @@index([isActive])
   @@map("visa_types")
 }
+
+model EmailProcessLog {
+  id              String   @id @default(uuid())
+  messageId       String
+  pdfKey          String
+  pdfFilename     String
+
+  status          String   @default("PENDING")
+  extractedData   Json?
+  errorMessage    String?
+
+  processedAt     DateTime?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@index([messageId])
+  @@index([status])
+  @@index([createdAt])
+  @@map("email_process_logs")
+}
