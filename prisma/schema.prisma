@@ -7,21 +7,44 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+model Customer {
+  id           String   @id @default(uuid())
+  passport_no  String   @unique
+  name         String
+  phone        String?
+  whatsapp     String?
+  visaRecords  VisaRecord[]
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@index([passport_no])
+  @@map("customers")
+}
+
 model VisaRecord {
   id               String   @id @default(uuid())
-  customer_name    String
-  passport_no      String   @unique
-  visa_type        String
+  customerId       String
+  customer         Customer @relation(fields: [customerId], references: [id], onDelete: Cascade)
+
+  visaTypeCode     String
+  visaType         VisaType @relation(fields: [visaTypeCode], references: [code])
+
+  passport_no      String
   expiry_date      DateTime
   is_urgent        Boolean  @default(false)
-  phone            String?
-  whatsapp         String?
   reminder_enabled Boolean  @default(false)
   entry_date       DateTime?
   port_of_entry    String?
+  file_url         String?
+
   reminders        Reminder[]
   createdAt        DateTime @default(now())
   updatedAt        DateTime @updatedAt
+
+  @@unique([customerId, visaTypeCode, expiry_date])
+  @@index([customerId])
+  @@index([visaTypeCode])
+  @@index([expiry_date])
 }
 
 model SystemLog {
@@ -89,6 +112,7 @@ model VisaType {
   nameId        String
   requiresEntry Boolean  @default(false)
   isActive      Boolean  @default(true)
+  visaRecords   VisaRecord[]
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
 

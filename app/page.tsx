@@ -93,19 +93,23 @@ function DashboardContent() {
   const filteredData = useMemo(() => {
     // Only show B211A or non-ITAS/Work visas
     let filtered = data.filter(
-      (r) => !r.visa_type.includes("ITAS") && !r.visa_type.includes("C31") && !r.visa_type.includes("工作") && !r.visa_type.includes("投资")
+      (r) => !r.visaType?.code?.includes("ITAS") &&
+             !r.visaType?.code?.includes("C31") &&
+             !r.visaType?.code?.includes("C312") &&
+             !r.visaType?.code?.includes("C313") &&
+             !r.visaType?.code?.includes("C314")
     );
-    
+
     // If there's a global search query, filter by it
     if (searchQuery) {
       const lowerQuery = searchQuery.toLowerCase();
       filtered = filtered.filter(
         (record) =>
-          record.customer_name.toLowerCase().includes(lowerQuery) ||
+          record.customer?.name?.toLowerCase().includes(lowerQuery) ||
           record.passport_no.toLowerCase().includes(lowerQuery)
       );
     }
-    
+
     // Filter by status
     if (statusFilter !== "all") {
       const today = new Date();
@@ -117,10 +121,8 @@ function DashboardContent() {
         return true;
       });
     }
-    
-    // If there's a passport_id in URL, we still show all data but maybe highlight it?
-    // The prompt says: "当 URL 包含该参数时，系统应自动在主列表中过滤出该记录，并自动触发打开该记录的详情侧边栏"
-    // So if passport_id is present, we filter the list to show ONLY that record.
+
+    // If there's a passport_id in URL, filter to show ONLY that record
     if (passportIdFromUrl) {
       filtered = filtered.filter((record) => record.passport_no === passportIdFromUrl);
     }
@@ -340,10 +342,10 @@ function DashboardContent() {
                       onClick={() => handleRowClick(record.passport_no)}
                     >
                       <TableCell className="text-center" onClick={(e) => e.stopPropagation()}>
-                        <Checkbox 
+                        <Checkbox
                           checked={selectedRecords.has(record.passport_no)}
                           onCheckedChange={() => toggleSelectRecord(record.passport_no)}
-                          aria-label={`Select ${record.customer_name}`}
+                          aria-label={`Select ${record.customer?.name}`}
                         />
                       </TableCell>
                       <TableCell className="text-center" onClick={(e) => e.stopPropagation()}>
@@ -355,12 +357,12 @@ function DashboardContent() {
                           <Edit className="h-4 w-4" />
                         </button>
                       </TableCell>
-                      <TableCell className="font-medium whitespace-nowrap">{record.customer_name}</TableCell>
+                      <TableCell className="font-medium whitespace-nowrap">{record.customer?.name}</TableCell>
                       <TableCell className="font-mono text-slate-600">{record.passport_no}</TableCell>
                       <TableCell className="whitespace-nowrap">
                         <div className="flex items-center gap-2">
-                          {getVisaIcon(record.visa_type)}
-                          <span>{record.visa_type}</span>
+                          {getVisaIcon(record.visaType?.nameZh || record.visaType?.code || '')}
+                          <span>{record.visaType?.nameZh || record.visaType?.code || '未知'}</span>
                         </div>
                       </TableCell>
                       <TableCell>{record.expiry_date}</TableCell>
@@ -440,10 +442,10 @@ function DashboardContent() {
                   <User className="h-4 w-4" /> 姓名
                 </div>
                 <div className="col-span-2 text-sm font-semibold text-slate-900">
-                  {selectedRecord.customer_name}
+                  {selectedRecord.customer?.name}
                 </div>
               </div>
-              
+
               <div className="grid grid-cols-3 items-center gap-4">
                 <div className="text-sm font-medium text-slate-500 flex items-center gap-2">
                   <FileText className="h-4 w-4" /> 护照号
@@ -458,8 +460,8 @@ function DashboardContent() {
                   <AlertCircle className="h-4 w-4" /> 签证类型
                 </div>
                 <div className="col-span-2 text-sm text-slate-900 flex items-center gap-2">
-                  {getVisaIcon(selectedRecord.visa_type)}
-                  {selectedRecord.visa_type}
+                  {getVisaIcon(selectedRecord.visaType?.nameZh || selectedRecord.visaType?.code || '')}
+                  {selectedRecord.visaType?.nameZh || selectedRecord.visaType?.code || '未知'}
                 </div>
               </div>
 
