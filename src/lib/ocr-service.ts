@@ -24,7 +24,7 @@ export async function extractTextFromPdfWithTesseract(pdfBuffer: Buffer, filenam
       try {
         console.log(`  [OCR] 识别第 ${i + 1}/${images.length} 张图片...`);
 
-        const result = await Tesseract.recognize(images[i], ['eng', 'ind'], {
+        const result = await Tesseract.recognize(images[i], ['eng', 'ind'] as any, {
           logger: (m) => {
             if (m.status === 'recognizing text') {
               console.log(`    进度: ${Math.round(m.progress * 100)}%`);
@@ -59,7 +59,7 @@ export async function extractTextFromImage(imageBuffer: Buffer): Promise<string>
   try {
     console.log('  [OCR] 使用 Tesseract.js 进行图片 OCR...');
 
-    const result = await Tesseract.recognize(imageBuffer, ['eng', 'ind'], {
+    const result = await Tesseract.recognize(imageBuffer, ['eng', 'ind'] as any, {
       logger: (m) => {
         if (m.status === 'recognizing text') {
           console.log(`    进度: ${Math.round(m.progress * 100)}%`);

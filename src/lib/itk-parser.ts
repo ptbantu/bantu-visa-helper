@@ -1,5 +1,3 @@
-import type { PDFDocument } from 'pdfjs-dist';
-
 export interface ITKDocumentData {
   // 证件状态类
   permit_number?: string;

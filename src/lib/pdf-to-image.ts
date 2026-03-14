@@ -126,15 +126,21 @@ export function imageToBase64(imageBuffer: Buffer): string {
 
 /**
  * 将图片 Buffer 转换为 Qwen 可用的格式
- * @param imageBuffer 图片 Buffer
- * @returns Qwen 图片格式对象
+ * @param imageBuffers 图片 Buffer 或 Buffer 数组
+ * @returns Qwen 图片格式对象或对象数组
  */
-export function imageToQwenFormat(imageBuffer: Buffer): {
-  type: 'image';
-  image: string;
-} {
+export function imageToQwenFormat(
+  imageBuffers: Buffer | Buffer[]
+): { type: 'image'; image: string } | { type: 'image'; image: string }[] {
+  if (Array.isArray(imageBuffers)) {
+    return imageBuffers.map((buffer) => ({
+      type: 'image' as const,
+      image: imageToBase64(buffer),
+    }));
+  }
+
   return {
     type: 'image',
-    image: imageToBase64(imageBuffer),
+    image: imageToBase64(imageBuffers),
   };
 }

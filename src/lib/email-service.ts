@@ -134,8 +134,10 @@ async function smartParseVisaData(pdfBuffer: Buffer, filename: string): Promise<
     console.log('  [3.1] 尝试使用图片识别（Qwen）...');
     const images = await convertPdfToImages(pdfBuffer, filename);
     if (images.length > 0) {
-      const qwenFormat = await imageToQwenFormat(images);
-      return await parseWithQwen(qwenFormat);
+      const qwenFormats = imageToQwenFormat(images);
+      // 如果是数组，取第一张图片（通常签证只有一页）
+      const firstImage = Array.isArray(qwenFormats) ? qwenFormats[0] : qwenFormats;
+      return await parseWithQwen(JSON.stringify(firstImage));
     }
 
     throw new Error('无法提取 PDF 内容');
