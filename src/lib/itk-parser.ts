@@ -1,11 +1,11 @@
 import type { PDFDocument } from 'pdfjs-dist';
+import { extractTextFromPdfWithTesseract } from './ocr-service';
 
 /**
  * 从 PDF Buffer 提取文本
- * 注：在 Next.js 中 pdf-parse 导入有问题，改用图片识别方式
  */
-async function extractTextFromPDF(pdfBuffer: Buffer): Promise<string> {
-  throw new Error('PDF 文本提取已禁用，请使用图片识别方式');
+async function extractTextFromPDF(pdfBuffer: Buffer, filename: string): Promise<string> {
+  return extractTextFromPdfWithTesseract(pdfBuffer, filename);
 }
   // 证件状态类
   permit_number?: string;
@@ -138,12 +138,12 @@ function formatDate(dateStr: string | undefined): string | undefined {
 /**
  * 解析 ITK 文档
  */
-export async function parseITKDocument(pdfBuffer: Buffer): Promise<ITKDocumentData> {
+export async function parseITKDocument(pdfBuffer: Buffer, filename?: string): Promise<ITKDocumentData> {
   const result: ITKDocumentData = {};
 
   try {
     // 提取文本
-    const text = await extractTextFromPDF(pdfBuffer);
+    const text = await extractTextFromPDF(pdfBuffer, filename || 'document.pdf');
     result.raw_text = text;
 
     // 检查文档类型

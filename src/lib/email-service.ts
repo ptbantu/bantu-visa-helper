@@ -94,10 +94,10 @@ async function parseWithQwen(pdfText: string): Promise<ParsedVisaData | null> {
 
 async function smartParseVisaData(pdfBuffer: Buffer, filename: string): Promise<ParsedVisaData | null> {
   try {
-    // 首先尝试使用 ITK 解析器（本地 PDF 解析）
+    // 首先尝试使用 ITK 解析器（使用 Tesseract.js OCR）
     try {
-      console.log('  [3] 尝试使用 ITK 解析器...');
-      const itkData = await parseITKDocument(pdfBuffer);
+      console.log('  [3] 尝试使用 ITK 解析器（Tesseract.js OCR）...');
+      const itkData = await parseITKDocument(pdfBuffer, pdfAttachment.filename);
 
       // 验证 ITK 文档
       const validation = validateITKDocument(itkData);
