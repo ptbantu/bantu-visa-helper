@@ -1,7 +1,10 @@
 import type { PDFDocument } from 'pdfjs-dist';
 
 // 使用 require 导入 pdf-parse
-const pdfParse = require('pdf-parse');
+let pdfParseModule = require('pdf-parse');
+
+// 处理不同的导出方式
+const pdfParse = pdfParseModule.default || pdfParseModule;
 
 export interface ITKDocumentData {
   // 证件状态类
