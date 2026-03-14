@@ -1,9 +1,9 @@
 import { NextResponse } from 'next/server';
 import { ImapFlow } from 'imapflow';
 import { simpleParser } from 'mailparser';
-import OSS from 'ali-oss';
 import pdfParse from 'pdf-parse';
 import prisma from '@/src/lib/prisma';
+import { uploadPdfToOSS } from '@/src/lib/oss';
 import { v4 as uuidv4 } from 'uuid';
 
 // ============================================================================
@@ -26,34 +26,6 @@ interface PDFAttachment {
 // ============================================================================
 // 工具函数
 // ============================================================================
-
-function initOSSClient(): OSS {
-  return new OSS({
-    region: process.env.OSS_REGION || 'oss-ap-southeast-5',
-    accessKeyId: process.env.OSS_ACCESS_KEY_ID || '',
-    accessKeySecret: process.env.OSS_ACCESS_KEY_SECRET || '',
-    bucket: process.env.OSS_BUCKET_NAME || 'bantuqifu-dev',
-  });
-}
-
-async function uploadPdfToOSS(pdfBuffer: Buffer, filename: string): Promise<{ ossUrl: string; pdfKey: string }> {
-  try {
-    const oss = initOSSClient();
-    const now = new Date();
-    const dateStr = now.toISOString().split('T')[0].replace(/-/g, '');
-    const uuid = uuidv4();
-    const ossPath = `visas/${dateStr}/${uuid}.pdf`;
-
-    const result = await oss.put(ossPath, pdfBuffer);
-    const ossUrl = result.url || `https://${process.env.OSS_BUCKET_NAME}.${process.env.OSS_REGION}.aliyuncs.com/${ossPath}`;
-
-    console.log(`✓ PDF 上传成功: ${ossPath}`);
-    return { ossUrl, pdfKey: ossPath };
-  } catch (error) {
-    console.error('上传 PDF 到 OSS 失败:', error);
-    throw error;
-  }
-}
 
 async function extractTextFromPDF(pdfBuffer: Buffer): Promise<string> {
   try {
