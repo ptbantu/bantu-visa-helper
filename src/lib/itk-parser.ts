@@ -1,4 +1,25 @@
-import pdfParse from 'pdf-parse';
+import type { PDFDocument } from 'pdfjs-dist';
+
+// 动态导入 pdf-parse
+let pdfParse: any = null;
+
+async function getPdfParser() {
+  if (!pdfParse) {
+    try {
+      // 尝试 ESM 导入
+      const module = await import('pdf-parse/lib/pdf-parse.js');
+      pdfParse = module.default || module;
+    } catch {
+      try {
+        // 备用：CommonJS 导入
+        pdfParse = require('pdf-parse');
+      } catch {
+        throw new Error('无法加载 pdf-parse 模块');
+      }
+    }
+  }
+  return pdfParse;
+}
 
 export interface ITKDocumentData {
   // 证件状态类
@@ -39,7 +60,8 @@ export interface ITKDocumentData {
  */
 async function extractTextFromPDF(pdfBuffer: Buffer): Promise<string> {
   try {
-    const data = await pdfParse(pdfBuffer);
+    const parser = await getPdfParser();
+    const data = await parser(pdfBuffer);
     return data.text;
   } catch (error) {
     console.error('PDF 文本提取失败:', error);
