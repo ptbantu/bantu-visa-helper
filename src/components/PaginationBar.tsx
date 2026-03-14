@@ -1,4 +1,5 @@
 import { Button } from "@/src/components/ui/button";
+import { useLanguage } from "@/src/contexts/LanguageContext";
 import {
   Select,
   SelectContent,
@@ -25,6 +26,7 @@ export function PaginationBar({
   onPageSizeChange,
   loading = false,
 }: PaginationBarProps) {
+  const { t } = useLanguage();
   const totalPages = Math.ceil(total / pageSize);
   const startRecord = total === 0 ? 0 : (current - 1) * pageSize + 1;
   const endRecord = Math.min(current * pageSize, total);
@@ -34,10 +36,10 @@ export function PaginationBar({
       {/* 左侧：记录信息 */}
       <div className="text-xs text-slate-600 font-medium min-w-[150px]">
         {total === 0 ? (
-          <span>无数据</span>
+          <span>{t('pagination.showing')} 0 {t('pagination.records')}</span>
         ) : (
           <span>
-            第 {startRecord}-{endRecord} 条 / 共 {total} 条记录
+            {t('pagination.showing')} {startRecord}-{endRecord} {t('pagination.to')} / {t('pagination.of')} {total} {t('pagination.records')}
           </span>
         )}
       </div>
@@ -102,10 +104,10 @@ export function PaginationBar({
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="10">10 行/页</SelectItem>
-            <SelectItem value="20">20 行/页</SelectItem>
-            <SelectItem value="50">50 行/页</SelectItem>
-            <SelectItem value="100">100 行/页</SelectItem>
+            <SelectItem value="10">10 {t('pagination.to')}/页</SelectItem>
+            <SelectItem value="20">20 {t('pagination.to')}/页</SelectItem>
+            <SelectItem value="50">50 {t('pagination.to')}/页</SelectItem>
+            <SelectItem value="100">100 {t('pagination.to')}/页</SelectItem>
           </SelectContent>
         </Select>
       </div>

@@ -3,6 +3,7 @@ import { ImapFlow } from 'imapflow';
 import { simpleParser } from 'mailparser';
 import prisma from '@/src/lib/prisma';
 import { uploadPdfToOSS } from '@/src/lib/oss';
+import { convertPdfToImages, imageToQwenFormat } from '@/src/lib/pdf-to-image';
 import { v4 as uuidv4 } from 'uuid';
 
 // pdf-parse 导入
@@ -62,7 +63,7 @@ async function parseWithQwen(pdfText: string): Promise<ParsedVisaData | null> {
       throw new Error('DASHSCOPE_API_KEY 未配置');
     }
 
-    const systemPrompt = `你是一个印尼签证解析专家。请从以下 PDF 文本中提取：
+    const systemPrompt = `你是一个印尼签证解析专家。请从以下图片中提取：
 - customer_name: 客户姓名
 - passport_no: 护照号码
 - visa_type: 签证类型
@@ -109,6 +110,96 @@ async function parseWithQwen(pdfText: string): Promise<ParsedVisaData | null> {
   } catch (error) {
     console.error('调用 Qwen API 失败:', error);
     throw error;
+  }
+}
+
+/**
+ * 使用 Qwen 图片识别 API 解析签证信息
+ */
+async function parseWithQwenImage(imageBuffers: Buffer[]): Promise<ParsedVisaData | null> {
+  try {
+    const apiKey = process.env.DASHSCOPE_API_KEY;
+    if (!apiKey) {
+      throw new Error('DASHSCOPE_API_KEY 未配置');
+    }
+
+    if (!imageBuffers || imageBuffers.length === 0) {
+      throw new Error('没有可用的图片进行识别');
+    }
+
+    const userPrompt = `你是一个印尼签证解析专家。请从以下图片中提取：
+- customer_name: 客户姓名
+- passport_no: 护照号码
+- visa_type: 签证类型
+- expiry_date: 到期日期（格式：YYYY-MM-DD）
+- entry_date: 入境日期（格式：YYYY-MM-DD，如果没有则为 null）
+
+必须且仅输出纯净的 JSON 字符串，不要带有 markdown 标记（如 \`\`\`json）。`;
+
+    // 构建消息内容，包含提示和所有图片
+    const messageContent: any[] = [{ type: 'text', text: userPrompt }];
+
+    for (const imageBuffer of imageBuffers) {
+      messageContent.push({
+        type: 'image',
+        image: imageBuffer.toString('base64'),
+      });
+    }
+
+    const response = await fetch('https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${apiKey}`,
+      },
+      body: JSON.stringify({
+        model: 'qwen-max',
+        messages: [
+          { role: 'user', content: messageContent },
+        ],
+        temperature: 0.3,
+        max_tokens: 1024,
+      }),
+    });
+
+    if (!response.ok) {
+      throw new Error(`Qwen API 错误: ${response.status} ${response.statusText}`);
+    }
+
+    const result = await response.json();
+    if (result.choices?.[0]?.message?.content) {
+      const content = result.choices[0].message.content;
+      const cleanedJson = cleanJsonString(content);
+      const parsedData = JSON.parse(cleanedJson);
+
+      if (validateVisaData(parsedData)) {
+        return parsedData;
+      } else {
+        throw new Error('解析的数据格式不符合要求');
+      }
+    }
+
+    throw new Error('Qwen API 返回格式异常');
+  } catch (error) {
+    console.error('调用 Qwen 图片识别 API 失败:', error);
+    throw error;
+  }
+}
+
+/**
+ * 智能识别流程：优先图片识别，失败则降级到文本识别
+ */
+async function smartParseVisaData(pdfBuffer: Buffer, filename: string): Promise<ParsedVisaData | null> {
+  try {
+    // 尝试图片识别
+    const imageBuffers = await convertPdfToImages(pdfBuffer, filename);
+    return await parseWithQwenImage(imageBuffers);
+  } catch (imageError) {
+    console.warn(`图片识别失败: ${imageError instanceof Error ? imageError.message : String(imageError)}`);
+
+    // 降级到文本识别
+    const pdfText = await extractTextFromPDF(pdfBuffer);
+    return await parseWithQwen(pdfText);
   }
 }
 
@@ -178,13 +269,9 @@ async function processPDFAttachment(
 
     // ========== 步骤 2: 核心处理流程 (Try-Catch 包裹) ==========
     try {
-      // 2.1 AI 提取
-      console.log('  [3] 提取 PDF 文本...');
-      const pdfText = await extractTextFromPDF(pdfAttachment.content);
-      console.log(`  ✓ 提取文本长度: ${pdfText.length} 字符`);
-
-      console.log('  [4] 调用 Qwen 进行数据提取...');
-      const visaData = await parseWithQwen(pdfText);
+      // 2.1 AI 提取 - 智能识别（优先图片识别，降级到文本识别）
+      console.log('  [3] 启动智能识别流程...');
+      const visaData = await smartParseVisaData(pdfAttachment.content, pdfAttachment.filename);
 
       if (!visaData) {
         throw new Error('Qwen 解析返回 null');
@@ -197,7 +284,7 @@ async function processPDFAttachment(
       await prisma.emailProcessLog.update({
         where: { id: logId },
         data: {
-          extractedData: visaData,
+          extractedData: visaData as any,
         },
       });
       console.log('  ✓ 数据暂存成功');

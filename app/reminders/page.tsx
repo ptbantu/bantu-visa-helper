@@ -24,7 +24,7 @@ interface Reminder {
 }
 
 export default function RemindersPage() {
-  const { t } = useLanguage();
+  const { t, language } = useLanguage();
   const [reminders, setReminders] = useState<Reminder[]>([]);
   const [stats, setStats] = useState({ stage1_count: 0, stage2_count: 0, stage3_count: 0, unacknowledged_count: 0 });
   const [stageFilter, setStageFilter] = useState("all");
@@ -43,7 +43,7 @@ export default function RemindersPage() {
           const data = await res.json();
           setReminders(data.reminders.map((r: any) => ({
             ...r,
-            expiry_date: new Date(r.expiry_date).toLocaleDateString('zh-CN'),
+            expiry_date: new Date(r.expiry_date).toLocaleDateString(language === 'zh' ? 'zh-CN' : 'id-ID'),
           })));
           setStats(data.stats);
           setTotalRecords(data.total || 0);
@@ -63,12 +63,12 @@ export default function RemindersPage() {
       const res = await fetch('/api/reminders', { method: 'POST' });
       if (res.ok) {
         const result = await res.json();
-        alert(`已生成 ${result.created} 条新提醒，更新 ${result.updated} 条现有提醒`);
+        alert(t('reminders.refresh_success').replace('{created}', result.created).replace('{updated}', result.updated));
         window.location.reload();
       }
     } catch (error) {
       console.error('Error triggering reminders:', error);
-      alert('触发失败');
+      alert(t('reminders.refresh_error'));
     }
   };
 
@@ -86,8 +86,8 @@ export default function RemindersPage() {
   };
 
   const getStatusBadgeVariant = (status: string) => {
-    if (status === '紧急预警') return 'destructive';
-    if (status === '电话提醒') return 'secondary';
+    if (status === t('reminders.urgent_alert')) return 'destructive';
+    if (status === t('reminders.phone_reminder')) return 'secondary';
     return 'default';
   };
 
@@ -103,19 +103,19 @@ export default function RemindersPage() {
         {/* 统计卡片 */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 flex-shrink-0">
           <Card className="p-4">
-            <p className="text-sm text-slate-500">阶段一 (5天)</p>
+            <p className="text-sm text-slate-500">{t('reminders.stage_1_label')}</p>
             <p className="text-2xl font-bold">{stats.stage1_count}</p>
           </Card>
           <Card className="p-4">
-            <p className="text-sm text-slate-500">阶段二 (3天)</p>
+            <p className="text-sm text-slate-500">{t('reminders.stage_2_label')}</p>
             <p className="text-2xl font-bold">{stats.stage2_count}</p>
           </Card>
           <Card className="p-4">
-            <p className="text-sm text-slate-500">阶段三 (1天)</p>
+            <p className="text-sm text-slate-500">{t('reminders.stage_3_label')}</p>
             <p className="text-2xl font-bold text-red-600">{stats.stage3_count}</p>
           </Card>
           <Card className="p-4">
-            <p className="text-sm text-slate-500">未确认</p>
+            <p className="text-sm text-slate-500">{t('reminders.unacknowledged')}</p>
             <p className="text-2xl font-bold">{stats.unacknowledged_count}</p>
           </Card>
         </div>
@@ -123,31 +123,31 @@ export default function RemindersPage() {
         {/* 操作按钮 */}
         <div className="flex gap-2 flex-wrap flex-shrink-0">
           <Button onClick={handleTrigger} className="bg-blue-600 hover:bg-blue-700">
-            手动刷新提醒
+            {t('reminders.refresh')}
           </Button>
           <Button
             variant={stageFilter === "all" ? "default" : "outline"}
             onClick={() => setStageFilter("all")}
           >
-            全部
+            {t('reminders.all')}
           </Button>
           <Button
             variant={stageFilter === "阶段一" ? "default" : "outline"}
             onClick={() => setStageFilter("阶段一")}
           >
-            阶段一
+            {t('reminders.stage_1')}
           </Button>
           <Button
             variant={stageFilter === "阶段二" ? "default" : "outline"}
             onClick={() => setStageFilter("阶段二")}
           >
-            阶段二
+            {t('reminders.stage_2')}
           </Button>
           <Button
             variant={stageFilter === "阶段三" ? "default" : "outline"}
             onClick={() => setStageFilter("阶段三")}
           >
-            阶段三
+            {t('reminders.stage_3')}
           </Button>
         </div>
 
@@ -157,14 +157,14 @@ export default function RemindersPage() {
             <Table>
               <TableHeader className="bg-slate-100 sticky top-0 z-10 shadow-sm">
                 <TableRow>
-                  <TableHead className="py-1.5 px-3 text-[13px] font-semibold text-slate-700">客户姓名</TableHead>
-                  <TableHead className="py-1.5 px-3 text-[13px] font-semibold text-slate-700">护照号</TableHead>
-                  <TableHead className="py-1.5 px-3 text-[13px] font-semibold text-slate-700">签证类型</TableHead>
-                  <TableHead className="py-1.5 px-3 text-[13px] font-semibold text-slate-700">到期日</TableHead>
-                  <TableHead className="py-1.5 px-3 text-[13px] font-semibold text-slate-700">剩余天数</TableHead>
-                  <TableHead className="py-1.5 px-3 text-[13px] font-semibold text-slate-700">阶段</TableHead>
-                  <TableHead className="py-1.5 px-3 text-[13px] font-semibold text-slate-700">状态</TableHead>
-                  <TableHead className="py-1.5 px-3 text-[13px] font-semibold text-slate-700">操作</TableHead>
+                  <TableHead className="py-1.5 px-3 text-[13px] font-semibold text-slate-700">{t('reminders.customer')}</TableHead>
+                  <TableHead className="py-1.5 px-3 text-[13px] font-semibold text-slate-700">{t('reminders.passport')}</TableHead>
+                  <TableHead className="py-1.5 px-3 text-[13px] font-semibold text-slate-700">{t('table.visa_type')}</TableHead>
+                  <TableHead className="py-1.5 px-3 text-[13px] font-semibold text-slate-700">{t('reminders.expiry')}</TableHead>
+                  <TableHead className="py-1.5 px-3 text-[13px] font-semibold text-slate-700">{t('reminders.days_left')}</TableHead>
+                  <TableHead className="py-1.5 px-3 text-[13px] font-semibold text-slate-700">{t('reminders.stage')}</TableHead>
+                  <TableHead className="py-1.5 px-3 text-[13px] font-semibold text-slate-700">{t('table.status')}</TableHead>
+                  <TableHead className="py-1.5 px-3 text-[13px] font-semibold text-slate-700">{t('table.actions')}</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -182,7 +182,7 @@ export default function RemindersPage() {
                       <TableCell className="py-1.5 px-3 text-[13px]">{r.expiry_date}</TableCell>
                       <TableCell className="py-1.5 px-3 text-[13px]">
                         <Badge variant={r.days_left <= 1 ? 'destructive' : 'secondary'}>
-                          {r.days_left} 天
+                          {r.days_left} {language === 'zh' ? '天' : 'hari'}
                         </Badge>
                       </TableCell>
                       <TableCell className="py-1.5 px-3 text-[13px]">
@@ -201,7 +201,7 @@ export default function RemindersPage() {
                           className="text-xs h-7"
                         >
                           <CheckCircle2 className="w-3 h-3 mr-1" />
-                          已确认
+                          {language === 'zh' ? '已确认' : 'Dikonfirmasi'}
                         </Button>
                       </TableCell>
                     </TableRow>

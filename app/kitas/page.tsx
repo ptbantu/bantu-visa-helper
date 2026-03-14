@@ -124,9 +124,37 @@ function KitasContent() {
     if (selectedRecord) {
       const url = new URL(window.location.href);
       url.searchParams.set("passport_id", selectedRecord.passport_no);
-      navigator.clipboard.writeText(url.toString());
+
+      // 尝试使用 Clipboard API
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(url.toString()).then(() => {
+          setCopied(true);
+          setTimeout(() => setCopied(false), 2000);
+        }).catch(() => {
+          // 降级方案：使用传统的 execCommand
+          fallbackCopyToClipboard(url.toString());
+        });
+      } else {
+        // 降级方案：使用传统的 execCommand
+        fallbackCopyToClipboard(url.toString());
+      }
+    }
+  };
+
+  const fallbackCopyToClipboard = (text: string) => {
+    try {
+      const textarea = document.createElement('textarea');
+      textarea.value = text;
+      textarea.style.position = 'fixed';
+      textarea.style.opacity = '0';
+      document.body.appendChild(textarea);
+      textarea.select();
+      document.execCommand('copy');
+      document.body.removeChild(textarea);
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
+    } catch (err) {
+      console.error('复制失败:', err);
     }
   };
 
@@ -153,15 +181,15 @@ function KitasContent() {
     const daysLeft = differenceInDays(parseISO(expiryDate), new Date());
 
     if (daysLeft < 0) {
-      return <Badge variant="destructive" className="text-[11px] py-0.5">已过期</Badge>;
+      return <Badge variant="destructive" className="text-[11px] py-0.5">{t('status.expired')}</Badge>;
     }
     if (daysLeft <= 30) {
-      return <Badge variant="destructive" className="text-[11px] py-0.5">即将过期 ({daysLeft}天)</Badge>;
+      return <Badge variant="destructive" className="text-[11px] py-0.5">{t('status.expiring_soon')} ({daysLeft}天)</Badge>;
     }
     if (isUrgent) {
       return <Badge variant="warning" className="text-[11px] py-0.5">加急处理</Badge>;
     }
-    return <Badge variant="secondary" className="text-[11px] py-0.5">正常</Badge>;
+    return <Badge variant="secondary" className="text-[11px] py-0.5">{t('status.valid')}</Badge>;
   };
 
   const toggleSelectAll = () => {
@@ -231,13 +259,13 @@ function KitasContent() {
         <div className="ml-auto flex w-full max-w-md items-center space-x-2">
           <Select value={statusFilter} onValueChange={setStatusFilter}>
             <SelectTrigger className="w-[140px] bg-white h-8 text-[13px]">
-              <SelectValue placeholder="所有状态" />
+              <SelectValue placeholder={t('table.status')} />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="all">所有状态</SelectItem>
-              <SelectItem value="valid">正常</SelectItem>
-              <SelectItem value="expiring_soon">即将过期</SelectItem>
-              <SelectItem value="expired">已过期</SelectItem>
+              <SelectItem value="all">{t('table.status')}</SelectItem>
+              <SelectItem value="valid">{t('status.valid')}</SelectItem>
+              <SelectItem value="expiring_soon">{t('status.expiring_soon')}</SelectItem>
+              <SelectItem value="expired">{t('status.expired')}</SelectItem>
             </SelectContent>
           </Select>
           <div className="relative w-full">
@@ -422,7 +450,7 @@ function KitasContent() {
       <Sheet
         isOpen={!!selectedRecord}
         onClose={handleCloseSheet}
-        title="签证详情"
+        title={t('drawer.title')}
         description="AI 提取的结构化签证数据"
       >
         {selectedRecord && (
@@ -431,14 +459,14 @@ function KitasContent() {
               {getStatusBadge(selectedRecord.expiry_date, selectedRecord.is_urgent)}
               <Button variant="outline" size="sm" onClick={handleCopyLink} className="h-8 text-[13px]">
                 {copied ? <Check className="mr-2 h-4 w-4 text-green-600" /> : <Copy className="mr-2 h-4 w-4" />}
-                {copied ? "已复制" : "复制链接"}
+                {copied ? t('drawer.copied') : t('drawer.copy_link')}
               </Button>
             </div>
 
             <div className="space-y-4 rounded-md border p-4 bg-slate-50/50">
               <div className="grid grid-cols-3 items-center gap-4">
                 <div className="text-sm font-medium text-slate-500 flex items-center gap-2">
-                  <User className="h-4 w-4" /> 姓名
+                  <User className="h-4 w-4" /> {t('drawer.customer_name')}
                 </div>
                 <div className="col-span-2 text-sm font-semibold text-slate-900">
                   {selectedRecord.customer?.name}
@@ -447,7 +475,7 @@ function KitasContent() {
 
               <div className="grid grid-cols-3 items-center gap-4">
                 <div className="text-sm font-medium text-slate-500 flex items-center gap-2">
-                  <FileText className="h-4 w-4" /> 护照号
+                  <FileText className="h-4 w-4" /> {t('drawer.passport_no')}
                 </div>
                 <div className="col-span-2 text-sm font-mono text-slate-900">
                   {selectedRecord.passport_no}
@@ -456,7 +484,7 @@ function KitasContent() {
 
               <div className="grid grid-cols-3 items-center gap-4">
                 <div className="text-sm font-medium text-slate-500 flex items-center gap-2">
-                  <AlertCircle className="h-4 w-4" /> 签证类型
+                  <AlertCircle className="h-4 w-4" /> {t('drawer.visa_type')}
                 </div>
                 <div className="col-span-2 text-sm text-slate-900 flex items-center gap-2">
                   {getVisaIcon(selectedRecord.visaType)}
@@ -466,19 +494,19 @@ function KitasContent() {
 
               <div className="grid grid-cols-3 items-center gap-4">
                 <div className="text-sm font-medium text-slate-500 flex items-center gap-2">
-                  <Calendar className="h-4 w-4" /> 有效期至
+                  <Calendar className="h-4 w-4" /> {t('drawer.expiry_date')}
                 </div>
                 <div className="col-span-2 text-sm text-slate-900">
-                  {new Date(selectedRecord.expiry_date).toLocaleDateString('zh-CN')}
+                  {new Date(selectedRecord.expiry_date).toLocaleDateString(language === 'zh' ? 'zh-CN' : 'id-ID')}
                 </div>
               </div>
 
               <div className="grid grid-cols-3 items-center gap-4">
                 <div className="text-sm font-medium text-slate-500 flex items-center gap-2">
-                  <Clock className="h-4 w-4" /> 紧急程度
+                  <Clock className="h-4 w-4" /> {t('drawer.status')}
                 </div>
                 <div className="col-span-2 text-sm text-slate-900">
-                  {selectedRecord.is_urgent ? "加急" : "普通"}
+                  {selectedRecord.is_urgent ? (language === 'zh' ? "加急" : "Mendesak") : (language === 'zh' ? "普通" : "Normal")}
                 </div>
               </div>
             </div>
@@ -487,7 +515,7 @@ function KitasContent() {
 
             <div className="mt-auto pt-6">
               <Button className="w-full" onClick={handleCloseSheet}>
-                关闭
+                {t('drawer.close')}
               </Button>
             </div>
           </div>
