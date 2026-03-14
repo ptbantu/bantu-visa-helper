@@ -1,10 +1,12 @@
 import { NextResponse } from 'next/server';
 import { ImapFlow } from 'imapflow';
 import { simpleParser } from 'mailparser';
-import pdfParse from 'pdf-parse';
 import prisma from '@/src/lib/prisma';
 import { uploadPdfToOSS } from '@/src/lib/oss';
 import { v4 as uuidv4 } from 'uuid';
+
+// pdf-parse 导入
+const pdfParse = require('pdf-parse/lib/pdf-parse.js');
 
 // ============================================================================
 // 类型定义
