@@ -1,4 +1,5 @@
 import { fetchEmailsFromImap } from './email-service';
+import { cleanupTempDirectory } from './pdf-to-image';
 
 let emailScheduleInterval: NodeJS.Timeout | null = null;
 
@@ -42,6 +43,11 @@ export function stopEmailScheduler() {
 async function executeEmailFetch() {
   try {
     console.log(`\n=== 邮件定时拉取 [${new Date().toISOString()}] ===`);
+
+    // 清空临时目录
+    console.log('清空临时目录...');
+    cleanupTempDirectory();
+
     const result = await fetchEmailsFromImap();
     console.log(`✓ 邮件拉取完成:`);
     console.log(`  - 处理: ${result.processedCount} 封`);

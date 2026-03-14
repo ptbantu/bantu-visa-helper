@@ -1,7 +1,42 @@
 import * as pdf2pic from 'pdf2pic';
 import * as fs from 'fs';
 import * as path from 'path';
-import * as os from 'os';
+
+// 使用固定的 /tmp 目录
+const TEMP_DIR = '/tmp/bantu-visa-temp';
+
+/**
+ * 清空临时目录
+ */
+export function cleanupTempDirectory(): void {
+  try {
+    if (fs.existsSync(TEMP_DIR)) {
+      const files = fs.readdirSync(TEMP_DIR);
+      for (const file of files) {
+        const filePath = path.join(TEMP_DIR, file);
+        const stat = fs.statSync(filePath);
+        if (stat.isDirectory()) {
+          // 递归删除目录
+          fs.rmSync(filePath, { recursive: true, force: true });
+        } else {
+          fs.unlinkSync(filePath);
+        }
+      }
+      console.log(`✓ 临时目录已清空: ${TEMP_DIR}`);
+    }
+  } catch (error) {
+    console.warn(`⚠ 清空临时目录失败: ${error}`);
+  }
+}
+
+/**
+ * 确保临时目录存在
+ */
+function ensureTempDirectory(): void {
+  if (!fs.existsSync(TEMP_DIR)) {
+    fs.mkdirSync(TEMP_DIR, { recursive: true });
+  }
+}
 
 /**
  * 将 PDF 转换为图片
@@ -13,10 +48,11 @@ export async function convertPdfToImages(
   pdfBuffer: Buffer,
   filename: string
 ): Promise<Buffer[]> {
-  const tempDir = os.tmpdir();
+  ensureTempDirectory();
+
   const timestamp = Date.now();
-  const tempPdfPath = path.join(tempDir, `temp_${timestamp}_${filename}`);
-  const outputDir = path.join(tempDir, `pdf_images_${timestamp}`);
+  const tempPdfPath = path.join(TEMP_DIR, `temp_${timestamp}_${filename}`);
+  const outputDir = path.join(TEMP_DIR, `pdf_images_${timestamp}`);
 
   try {
     // 创建临时目录
@@ -71,11 +107,7 @@ export async function convertPdfToImages(
         fs.unlinkSync(tempPdfPath);
       }
       if (fs.existsSync(outputDir)) {
-        const files = fs.readdirSync(outputDir);
-        for (const file of files) {
-          fs.unlinkSync(path.join(outputDir, file));
-        }
-        fs.rmdirSync(outputDir);
+        fs.rmSync(outputDir, { recursive: true, force: true });
       }
     } catch (cleanupError) {
       console.warn('  ⚠ 清理临时文件失败:', cleanupError);
