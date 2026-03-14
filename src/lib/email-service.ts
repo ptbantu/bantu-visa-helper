@@ -379,16 +379,28 @@ export async function fetchEmailsFromImap(): Promise<{ processedCount: number; s
     const processedMessageIds = new Set(processedEmails.map(e => e.messageId));
     console.log(`✓ 已处理成功的邮件数: ${processedMessageIds.size}`);
 
-    console.log('搜索未读邮件...');
-    const searchResults = await imap.search({ seen: false });
+    // 计算日期范围
+    const daysBack = parseInt(process.env.EMAIL_DAYS_BACK || '7');
+    const sinceDate = new Date();
+    sinceDate.setDate(sinceDate.getDate() - daysBack);
+    sinceDate.setHours(0, 0, 0, 0);
+
+    console.log(`搜索条件: 最近 ${daysBack} 天的未读邮件`);
+    console.log(`日期范围: ${sinceDate.toISOString()} 至今`);
+
+    // 搜索条件：未读邮件 + 日期范围
+    const searchResults = await imap.search({
+      seen: false,
+      since: sinceDate,
+    });
 
     if (!searchResults || searchResults.length === 0) {
-      console.log('没有未读邮件');
+      console.log('没有符合条件的未读邮件');
       await imap.logout();
       return { processedCount, successCount, failedCount, skippedCount };
     }
 
-    console.log(`找到 ${searchResults.length} 封未读邮件`);
+    console.log(`找到 ${searchResults.length} 封符合条件的未读邮件`);
 
     for (const uid of searchResults) {
       try {
