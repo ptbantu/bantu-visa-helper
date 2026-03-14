@@ -41,6 +41,9 @@ async function parseWithQwen(pdfText: string): Promise<ParsedVisaData | null> {
       throw new Error('DASHSCOPE_API_KEY 或 QWEN_VL_API_KEY 未配置');
     }
 
+    console.log('  [3.3] 调用 Qwen API...');
+    console.log(`  API Key 长度: ${apiKey.length}`);
+
     const systemPrompt = `你是一个印尼签证解析专家。请从以下图片中提取：
 - customer_name: 客户姓名
 - passport_no: 护照号码
@@ -50,24 +53,29 @@ async function parseWithQwen(pdfText: string): Promise<ParsedVisaData | null> {
 
 必须且仅输出纯净的 JSON 字符串，不要带有 markdown 标记（如 \`\`\`json）。`;
 
+    const requestBody = {
+      model: 'qwen-vl-max',
+      messages: [
+        { role: 'system', content: systemPrompt },
+        { role: 'user', content: pdfText },
+      ],
+      temperature: 0.3,
+      max_tokens: 1024,
+    };
+
     const response = await fetch('https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
         'Authorization': `Bearer ${apiKey}`,
       },
-      body: JSON.stringify({
-        model: 'qwen-max',
-        messages: [
-          { role: 'system', content: systemPrompt },
-          { role: 'user', content: pdfText },
-        ],
-        temperature: 0.3,
-        max_tokens: 1024,
-      }),
+      body: JSON.stringify(requestBody),
     });
 
     if (!response.ok) {
+      const errorText = await response.text();
+      console.error(`  Qwen API 响应: ${response.status} ${response.statusText}`);
+      console.error(`  错误详情: ${errorText}`);
       throw new Error(`Qwen API 错误: ${response.status} ${response.statusText}`);
     }
 
@@ -78,6 +86,7 @@ async function parseWithQwen(pdfText: string): Promise<ParsedVisaData | null> {
       const parsedData = JSON.parse(cleanedJson);
 
       if (validateVisaData(parsedData)) {
+        console.log('  ✓ Qwen 识别成功');
         return parsedData;
       }
     }
