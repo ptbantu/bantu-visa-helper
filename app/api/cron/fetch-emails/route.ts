@@ -420,6 +420,17 @@ async function processEmail(imap: ImapFlow, uid: number): Promise<boolean> {
     // 解析邮件
     const parsed = await simpleParser(message.source);
 
+    // 检查邮件发件人是否来自移民局
+    const emailFilter = process.env.EMAIL_FILTER || 'no-reply@notif.imigrasi.go.id';
+    const fromAddress = parsed.from?.text || '';
+
+    if (!fromAddress.includes(emailFilter)) {
+      console.log(`邮件 UID ${uid} 来自 ${fromAddress}，不符合过滤条件 (${emailFilter})，跳过`);
+      return true;
+    }
+
+    console.log(`✓ 邮件来自移民局: ${fromAddress}`);
+
     // 提取 PDF 附件
     const pdfAttachments = await extractPDFAttachments(parsed);
 
