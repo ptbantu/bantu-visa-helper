@@ -6,20 +6,8 @@ import { convertPdfToImages, imageToQwenFormat } from '@/src/lib/pdf-to-image';
 import { parseITKDocument, validateITKDocument, type ITKDocumentData } from '@/src/lib/itk-parser';
 import { v4 as uuidv4 } from 'uuid';
 
-// 动态导入 pdf-parse
-let pdfParse: any = null;
-
-async function getPdfParser() {
-  if (!pdfParse) {
-    try {
-      pdfParse = (await import('pdf-parse/lib/pdf-parse.js')).default;
-    } catch {
-      // 备用导入方式
-      pdfParse = require('pdf-parse');
-    }
-  }
-  return pdfParse;
-}
+// 使用 require 导入 pdf-parse
+const pdfParse = require('pdf-parse/lib/pdf-parse.js');
 
 interface ParsedVisaData {
   customer_name: string;
@@ -38,8 +26,7 @@ interface PDFAttachment {
 
 async function extractTextFromPDF(pdfBuffer: Buffer): Promise<string> {
   try {
-    const parser = await getPdfParser();
-    const data = await parser(pdfBuffer);
+    const data = await pdfParse(pdfBuffer);
     return data.text;
   } catch (error) {
     console.error('提取 PDF 文本失败:', error);
