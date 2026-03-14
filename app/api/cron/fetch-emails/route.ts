@@ -469,11 +469,11 @@ async function processEmail(imap: ImapFlow, uid: number): Promise<boolean> {
  */
 async function fetchEmailsFromImap(): Promise<{ processedCount: number; successCount: number; failedCount: number }> {
   const imapConfig = {
-    host: process.env.IMAP_HOST || 'imap.qq.com',
+    host: process.env.IMAP_HOST || 'imap.gmail.com',
     port: parseInt(process.env.IMAP_PORT || '993'),
     secure: true,
     auth: {
-      user: process.env.EMAIL_ACCOUNT || 'admin@bantuqifu.com',
+      user: process.env.EMAIL_ACCOUNT || 'lianpeng523@gmail.com',
       pass: process.env.EMAIL_PASSWORD || '',
     },
   };
@@ -482,6 +482,8 @@ async function fetchEmailsFromImap(): Promise<{ processedCount: number; successC
     console.error('EMAIL_PASSWORD 未配置');
     return { processedCount: 0, successCount: 0, failedCount: 0 };
   }
+
+  console.log(`使用 IMAP 配置: ${imapConfig.host}:${imapConfig.port}, 账户: ${imapConfig.auth.user}`);
 
   const imap = new ImapFlow(imapConfig);
   let processedCount = 0;
