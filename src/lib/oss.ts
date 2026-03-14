@@ -15,7 +15,7 @@ export function initOSSClient(): OSS {
   }
 
   return new OSS({
-    region: endpoint,
+    endpoint,
     accessKeyId,
     accessKeySecret,
     bucket,
