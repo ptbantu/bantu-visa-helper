@@ -7,7 +7,7 @@ import { parseITKDocument, validateITKDocument, type ITKDocumentData } from '@/s
 import { v4 as uuidv4 } from 'uuid';
 
 // 使用 require 导入 pdf-parse
-const pdfParse = require('pdf-parse/lib/pdf-parse.js');
+const pdfParse = require('pdf-parse');
 
 interface ParsedVisaData {
   customer_name: string;
