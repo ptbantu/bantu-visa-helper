@@ -129,7 +129,23 @@ async function extractPDFAttachments(email: any): Promise<PDFAttachment[]> {
 
       if (isPDF) {
         try {
-          const content = await attachment.content.buffer();
+          let content: Buffer;
+
+          // 处理不同类型的 content
+          if (Buffer.isBuffer(attachment.content)) {
+            // 如果已经是 Buffer
+            content = attachment.content;
+          } else if (typeof attachment.content.buffer === 'function') {
+            // 如果有 buffer() 方法
+            content = await attachment.content.buffer();
+          } else if (typeof attachment.content === 'string') {
+            // 如果是字符串，转换为 Buffer
+            content = Buffer.from(attachment.content);
+          } else {
+            // 尝试转换为 Buffer
+            content = Buffer.from(attachment.content);
+          }
+
           attachments.push({
             filename: attachment.filename || 'unknown.pdf',
             content,
