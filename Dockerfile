@@ -41,6 +41,9 @@ COPY --from=builder /app/.next ./.next
 # 复制 Prisma 生成文件（必需）
 COPY --from=builder /app/node_modules/.prisma ./node_modules/.prisma
 
+# 复制 Prisma schema（数据库迁移需要）
+COPY --from=builder /app/prisma ./prisma
+
 # 复制 Next.js 配置文件
 COPY --from=builder /app/next.config.ts ./
 

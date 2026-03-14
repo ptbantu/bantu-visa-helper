@@ -1,3 +1,5 @@
+version: '3.8'
+
 services:
   # Next.js 应用服务
   bantu-visa-helper:
@@ -9,6 +11,9 @@ services:
       - "8081:3000"
     env_file:
       - .env
+    environment:
+      - NODE_ENV=production
+      - NEXT_PUBLIC_APP_URL=http://localhost:8081
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:3000/"]
@@ -23,6 +28,15 @@ services:
         max-file: "3"
     networks:
       - bantu-network
+    # 资源限制
+    deploy:
+      resources:
+        limits:
+          cpus: '2'
+          memory: 1G
+        reservations:
+          cpus: '1'
+          memory: 512M
 
 networks:
   bantu-network:
