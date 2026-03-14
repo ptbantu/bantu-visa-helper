@@ -3,6 +3,7 @@ import { simpleParser } from 'mailparser';
 import prisma from '@/src/lib/prisma';
 import { uploadPdfToOSS } from '@/src/lib/oss';
 import { convertPdfToImages, imageToQwenFormat } from '@/src/lib/pdf-to-image';
+import { parseITKDocument, validateITKDocument, type ITKDocumentData } from '@/src/lib/itk-parser';
 import { v4 as uuidv4 } from 'uuid';
 
 // 动态导入 pdf-parse
@@ -26,6 +27,8 @@ interface ParsedVisaData {
   visa_type: string;
   expiry_date: string;
   entry_date: string | null;
+  // ITK 扩展字段
+  itk_data?: ITKDocumentData;
 }
 
 interface PDFAttachment {
@@ -117,21 +120,49 @@ async function parseWithQwen(pdfText: string): Promise<ParsedVisaData | null> {
 
 async function smartParseVisaData(pdfBuffer: Buffer, filename: string): Promise<ParsedVisaData | null> {
   try {
-    // 尝试使用图片识别（需要 GraphicsMagick）
+    // 首先尝试使用 ITK 解析器（本地 PDF 解析）
     try {
-      const images = await convertPdfToImages(pdfBuffer, filename);
-      if (images.length > 0) {
-        const qwenFormat = await imageToQwenFormat(images);
-        return await parseWithQwen(qwenFormat);
+      console.log('  [3] 尝试使用 ITK 解析器...');
+      const itkData = await parseITKDocument(pdfBuffer);
+
+      // 验证 ITK 文档
+      const validation = validateITKDocument(itkData);
+
+      if (itkData.is_evisa) {
+        throw new Error('Not an ITK document');
       }
-    } catch (imageError) {
-      console.warn('图片识别失败，降级到文本识别:', imageError);
+
+      if (!validation.valid) {
+        console.warn('  ⚠ ITK 文档验证失败:', validation.errors);
+      }
+
+      // 如果成功提取了关键字段，返回结果
+      if (itkData.permit_number && itkData.expiry_date && itkData.full_name && itkData.passport_number) {
+        console.log('  ✓ ITK 文档解析成功');
+        return {
+          customer_name: itkData.full_name,
+          passport_no: itkData.passport_number,
+          visa_type: itkData.document_type || 'ITK',
+          expiry_date: itkData.expiry_date,
+          entry_date: null,
+          itk_data: itkData,
+        };
+      }
+    } catch (itkError) {
+      if (itkError instanceof Error && itkError.message === 'Not an ITK document') {
+        console.warn('  ⚠ 不是 ITK 文档:', itkError.message);
+        throw itkError;
+      }
+      console.warn('  ⚠ ITK 解析失败，尝试其他方式:', itkError);
     }
 
     // 降级到文本识别
     const pdfText = await extractTextFromPDF(pdfBuffer);
     return await parseWithQwen(pdfText);
   } catch (error) {
+    if (error instanceof Error && error.message === 'Not an ITK document') {
+      throw error;
+    }
     console.error('智能解析失败:', error);
     return null;
   }
@@ -210,7 +241,7 @@ async function processPDFAttachment(
       const visaData = await smartParseVisaData(pdfAttachment.content, pdfAttachment.filename);
 
       if (!visaData) {
-        throw new Error('Qwen 解析返回 null');
+        throw new Error('解析返回 null');
       }
 
       console.log(`  ✓ 解析成功: ${visaData.customer_name} (${visaData.passport_no})`);
@@ -274,6 +305,20 @@ async function processPDFAttachment(
     } catch (processingError) {
       const errorMessage = processingError instanceof Error ? processingError.message : String(processingError);
       console.error(`  ✗ 处理失败: ${errorMessage}`);
+
+      // 检查是否是非 ITK 文档
+      if (errorMessage === 'Not an ITK document') {
+        console.log('  [9] 文档不是 ITK 类型，标记为 SKIPPED...');
+        await prisma.emailProcessLog.update({
+          where: { id: logId },
+          data: {
+            status: 'SKIPPED',
+            errorMessage: 'Not an ITK document - 不需要处理',
+          },
+        });
+        console.log('  ✓ 已标记为跳过');
+        return { success: true, logId };
+      }
 
       console.log('  [9] 更新日志状态为 FAILED...');
       await prisma.emailProcessLog.update({
