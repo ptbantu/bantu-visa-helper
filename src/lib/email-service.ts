@@ -130,8 +130,8 @@ async function smartParseVisaData(pdfBuffer: Buffer, filename: string): Promise<
       console.warn('  ⚠ ITK 解析失败，尝试图片识别:', itkError);
     }
 
-    // 降级到图片识别
-    console.log('  [3.1] 尝试使用图片识别...');
+    // 降级到图片识别（使用 Qwen）
+    console.log('  [3.1] 尝试使用图片识别（Qwen）...');
     const images = await convertPdfToImages(pdfBuffer, filename);
     if (images.length > 0) {
       const qwenFormat = await imageToQwenFormat(images);

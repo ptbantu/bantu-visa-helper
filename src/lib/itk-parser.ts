@@ -1,5 +1,4 @@
 import type { PDFDocument } from 'pdfjs-dist';
-import { extractTextFromPdfWithTesseract } from './ocr-service';
 
 export interface ITKDocumentData {
   // 证件状态类
@@ -37,9 +36,10 @@ export interface ITKDocumentData {
 
 /**
  * 从 PDF Buffer 提取文本
+ * 注：Tesseract.js 在 Next.js 中有兼容性问题，改用 Qwen 图片识别
  */
 async function extractTextFromPDF(pdfBuffer: Buffer, filename: string): Promise<string> {
-  return extractTextFromPdfWithTesseract(pdfBuffer, filename);
+  throw new Error('PDF 文本提取已禁用，请使用 Qwen 图片识别方式');
 }
 
 /**
