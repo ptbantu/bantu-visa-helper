@@ -385,22 +385,21 @@ export async function fetchEmailsFromImap(): Promise<{ processedCount: number; s
     sinceDate.setDate(sinceDate.getDate() - daysBack);
     sinceDate.setHours(0, 0, 0, 0);
 
-    console.log(`搜索条件: 最近 ${daysBack} 天的未读邮件`);
+    console.log(`搜索条件: 最近 ${daysBack} 天的所有邮件`);
     console.log(`日期范围: ${sinceDate.toISOString()} 至今`);
 
-    // 搜索条件：未读邮件 + 日期范围
+    // 搜索条件：只按日期范围，不按已读/未读
     const searchResults = await imap.search({
-      seen: false,
       since: sinceDate,
     });
 
     if (!searchResults || searchResults.length === 0) {
-      console.log('没有符合条件的未读邮件');
+      console.log('没有符合条件的邮件');
       await imap.logout();
       return { processedCount, successCount, failedCount, skippedCount };
     }
 
-    console.log(`找到 ${searchResults.length} 封符合条件的未读邮件`);
+    console.log(`找到 ${searchResults.length} 封符合条件的邮件`);
 
     for (const uid of searchResults) {
       try {
