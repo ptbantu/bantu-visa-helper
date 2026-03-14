@@ -290,17 +290,6 @@ async function processEmail(imap: ImapFlow, uid: number): Promise<boolean> {
 
     const parsed = await simpleParser(message.source);
 
-    // 检查邮件发件人是否来自移民局
-    const emailFilter = process.env.EMAIL_FILTER || 'no-reply@notif.imigrasi.go.id';
-    const fromAddress = parsed.from?.text || '';
-
-    if (!fromAddress.includes(emailFilter)) {
-      console.log(`邮件 UID ${uid} 来自 ${fromAddress}，不符合过滤条件 (${emailFilter})，跳过`);
-      return true;
-    }
-
-    console.log(`✓ 邮件来自移民局: ${fromAddress}`);
-
     const pdfAttachments = await extractPDFAttachments(parsed);
 
     if (pdfAttachments.length === 0) {
@@ -371,16 +360,31 @@ export async function fetchEmailsFromImap(): Promise<{ processedCount: number; s
     const mailbox = await imap.mailboxOpen('INBOX');
     console.log(`✓ 收件箱打开成功，共 ${mailbox.exists} 封邮件`);
 
-    console.log('搜索未读邮件...');
-    const searchResults = await imap.search({ seen: false });
+    // 构建搜索条件
+    const emailFilter = process.env.EMAIL_FILTER || 'no-reply@notif.imigrasi.go.id';
+    const daysBack = parseInt(process.env.EMAIL_DAYS_BACK || '7');
+
+    // 计算日期范围
+    const sinceDate = new Date();
+    sinceDate.setDate(sinceDate.getDate() - daysBack);
+
+    console.log(`搜索条件: 来自 ${emailFilter}，最近 ${daysBack} 天的未读邮件`);
+    console.log(`日期范围: ${sinceDate.toISOString()} 至今`);
+
+    // 使用 IMAP 搜索条件过滤
+    const searchResults = await imap.search({
+      seen: false,
+      from: emailFilter,
+      since: sinceDate,
+    });
 
     if (!searchResults || searchResults.length === 0) {
-      console.log('没有未读邮件');
+      console.log('没有符合条件的未读邮件');
       await imap.logout();
       return { processedCount: 0, successCount: 0, failedCount: 0 };
     }
 
-    console.log(`找到 ${searchResults.length} 封未读邮件`);
+    console.log(`找到 ${searchResults.length} 封符合条件的未读邮件`);
 
     for (const uid of searchResults) {
       try {
