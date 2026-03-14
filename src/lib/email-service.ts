@@ -52,10 +52,11 @@ async function parseWithDeepSeek(imageBase64: string): Promise<ParsedVisaData | 
   "entry_date": "入境日期（格式：YYYY-MM-DD，如果没有则为 null）"
 }
 
-重要：
-- 仅输出 JSON，不要带有 markdown 标记
-- 日期格式必须是 YYYY-MM-DD
-- 如果字段无法识别，使用 null`;
+重要：仅输出 JSON，不要带有 markdown 标记`;
+
+    // 限制 Base64 大小，只发送前 100KB
+    const maxBase64Length = 100000;
+    const truncatedBase64 = imageBase64.substring(0, maxBase64Length);
 
     const response = await fetch('https://api.deepseek.com/chat/completions', {
       method: 'POST',
@@ -64,7 +65,7 @@ async function parseWithDeepSeek(imageBase64: string): Promise<ParsedVisaData | 
         'Authorization': `Bearer ${apiKey}`,
       },
       body: JSON.stringify({
-        model: 'deepseek-vision',
+        model: 'deepseek-chat',
         messages: [
           {
             role: 'system',
@@ -72,29 +73,18 @@ async function parseWithDeepSeek(imageBase64: string): Promise<ParsedVisaData | 
           },
           {
             role: 'user',
-            content: [
-              {
-                type: 'image_url',
-                image_url: {
-                  url: `data:image/png;base64,${imageBase64}`,
-                },
-              },
-              {
-                type: 'text',
-                text: '请提取这张签证图片中的信息',
-              },
-            ],
+            content: `分析签证图片：data:image/png;base64,${truncatedBase64}`,
           },
         ],
         temperature: 0.3,
-        max_tokens: 1024,
+        max_tokens: 500,
       }),
     });
 
     if (!response.ok) {
       const errorText = await response.text();
       console.error(`  DeepSeek API 响应: ${response.status} ${response.statusText}`);
-      console.error(`  错误详情: ${errorText}`);
+      console.error(`  错误详情: ${errorText.substring(0, 200)}`);
       throw new Error(`DeepSeek API 错误: ${response.status} ${response.statusText}`);
     }
 
