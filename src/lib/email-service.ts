@@ -269,10 +269,44 @@ async function processPDFAttachment(
         console.log('  [7] 创建或更新客户信息...');
         const customer = await prisma.customer.upsert({
           where: { passport_no: visaData.passport_no },
-          update: { name: visaData.customer_name },
+          update: {
+            name: visaData.customer_name,
+            // 持有人身份信息
+            place_of_birth: visaData.itk_data?.place_of_birth,
+            passport_expiry: visaData.itk_data?.passport_expiry ? new Date(visaData.itk_data.passport_expiry) : undefined,
+            nationality: visaData.itk_data?.nationality,
+            gender: visaData.itk_data?.gender,
+            // 居留细节信息
+            address: visaData.itk_data?.address,
+            activity: visaData.itk_data?.activity,
+            occupation: visaData.itk_data?.occupation,
+            guarantor: visaData.itk_data?.guarantor,
+            // 签发机构信息
+            ministry_name: visaData.itk_data?.ministry_name,
+            issuing_office: visaData.itk_data?.issuing_office,
+            issuing_date: visaData.itk_data?.issuing_date ? new Date(visaData.itk_data.issuing_date) : undefined,
+            issuing_location: visaData.itk_data?.issuing_location,
+            office_address: visaData.itk_data?.office_address,
+          },
           create: {
             passport_no: visaData.passport_no,
             name: visaData.customer_name,
+            // 持有人身份信息
+            place_of_birth: visaData.itk_data?.place_of_birth,
+            passport_expiry: visaData.itk_data?.passport_expiry ? new Date(visaData.itk_data.passport_expiry) : null,
+            nationality: visaData.itk_data?.nationality,
+            gender: visaData.itk_data?.gender,
+            // 居留细节信息
+            address: visaData.itk_data?.address,
+            activity: visaData.itk_data?.activity,
+            occupation: visaData.itk_data?.occupation,
+            guarantor: visaData.itk_data?.guarantor,
+            // 签发机构信息
+            ministry_name: visaData.itk_data?.ministry_name,
+            issuing_office: visaData.itk_data?.issuing_office,
+            issuing_date: visaData.itk_data?.issuing_date ? new Date(visaData.itk_data.issuing_date) : null,
+            issuing_location: visaData.itk_data?.issuing_location,
+            office_address: visaData.itk_data?.office_address,
           },
         });
         console.log(`  ✓ 客户信息已处理 (ID: ${customer.id})`);

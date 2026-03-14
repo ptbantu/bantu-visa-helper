@@ -13,6 +13,26 @@ model Customer {
   name         String
   phone        String?
   whatsapp     String?
+
+  // 持有人身份信息
+  place_of_birth    String?
+  passport_expiry   DateTime?
+  nationality       String?
+  gender            String?
+
+  // 居留细节信息
+  address           String?
+  activity          String?
+  occupation        String?
+  guarantor         String?
+
+  // 签发机构信息
+  ministry_name     String?
+  issuing_office    String?
+  issuing_date      DateTime?
+  issuing_location  String?
+  office_address    String?
+
   visaRecords  VisaRecord[]
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
