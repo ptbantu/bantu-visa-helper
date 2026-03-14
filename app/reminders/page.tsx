@@ -9,7 +9,7 @@ import { Badge } from "@/src/components/ui/badge";
 import { Card } from "@/src/components/ui/card";
 import { PaginationBar } from "@/src/components/PaginationBar";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/src/components/ui/table";
-import { AlertTriangle, CheckCircle2 } from "lucide-react";
+import { AlertTriangle, CheckCircle2, Send } from "lucide-react";
 
 interface Reminder {
   id: string;
@@ -32,6 +32,7 @@ export default function RemindersPage() {
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(20);
   const [totalRecords, setTotalRecords] = useState(0);
+  const [sendingWechat, setSendingWechat] = useState(false);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -85,6 +86,25 @@ export default function RemindersPage() {
     }
   };
 
+  const handleSendWechat = async () => {
+    try {
+      setSendingWechat(true);
+      const res = await fetch('/api/reminders/wechat', { method: 'POST' });
+      const result = await res.json();
+
+      if (result.success) {
+        alert(language === 'zh' ? '企微通知已发送' : 'Notifikasi WeChat telah dikirim');
+      } else {
+        alert(language === 'zh' ? `发送失败: ${result.message}` : `Gagal: ${result.message}`);
+      }
+    } catch (error) {
+      console.error('Error sending WeChat notification:', error);
+      alert(language === 'zh' ? '发送企微通知失败' : 'Gagal mengirim notifikasi WeChat');
+    } finally {
+      setSendingWechat(false);
+    }
+  };
+
   const getStatusBadgeVariant = (status: string) => {
     if (status === t('reminders.urgent_alert')) return 'destructive';
     if (status === t('reminders.phone_reminder')) return 'secondary';
@@ -124,6 +144,14 @@ export default function RemindersPage() {
         <div className="flex gap-2 flex-wrap flex-shrink-0">
           <Button onClick={handleTrigger} className="bg-blue-600 hover:bg-blue-700">
             {t('reminders.refresh')}
+          </Button>
+          <Button
+            onClick={handleSendWechat}
+            disabled={sendingWechat}
+            className="bg-green-600 hover:bg-green-700"
+          >
+            <Send className="w-4 h-4 mr-2" />
+            {sendingWechat ? (language === 'zh' ? '发送中...' : 'Mengirim...') : (language === 'zh' ? '企微通知' : 'Notifikasi WeChat')}
           </Button>
           <Button
             variant={stageFilter === "all" ? "default" : "outline"}
