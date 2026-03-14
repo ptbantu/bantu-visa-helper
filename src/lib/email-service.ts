@@ -97,7 +97,7 @@ async function smartParseVisaData(pdfBuffer: Buffer, filename: string): Promise<
     // 首先尝试使用 ITK 解析器（使用 Tesseract.js OCR）
     try {
       console.log('  [3] 尝试使用 ITK 解析器（Tesseract.js OCR）...');
-      const itkData = await parseITKDocument(pdfBuffer, pdfAttachment.filename);
+      const itkData = await parseITKDocument(pdfBuffer, filename);
 
       // 验证 ITK 文档
       const validation = validateITKDocument(itkData);
