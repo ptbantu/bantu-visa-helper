@@ -25,8 +25,9 @@ Bantu 签证助手是一个全栈 Next.js 应用，专为签证管理人员设�
 ### 前置要求
 - Node.js 18+
 - PostgreSQL (Supabase)
+- Docker & Docker Compose (用于生产部署)
 
-### 安装步骤
+### 本地开发
 
 1. **克隆仓库**
    ```bash
@@ -56,6 +57,35 @@ Bantu 签证助手是一个全栈 Next.js 应用，专为签证管理人员设�
    - 设置: http://localhost:8081/settings
    - 提醒: http://localhost:8081/reminders
 
+### 生产部署
+
+#### Docker Compose 部署
+
+1. **配置环境变量**
+   ```bash
+   # 编辑 docker-compose.yml，设置 DATABASE_URL
+   ```
+
+2. **启动应用**
+   ```bash
+   docker compose up -d
+   ```
+
+3. **访问应用**
+   - HTTP: http://www.bantuqifu.online/visa
+   - HTTPS: https://www.bantuqifu.online/visa
+
+#### 获取 SSL 证书
+
+```bash
+# 使用 Let's Encrypt 获取证书
+docker run --rm -p 80:80 -v /etc/letsencrypt:/etc/letsencrypt \
+  -v /var/lib/letsencrypt:/var/lib/letsencrypt \
+  certbot/certbot certonly --standalone \
+  -d www.bantuqifu.online -d bantuqifu.online \
+  --non-interactive --agree-tos --email admin@bantuqifu.online
+```
+
 ---
 
 ## 📊 技术栈
@@ -65,6 +95,38 @@ Bantu 签证助手是一个全栈 Next.js 应用，专为签证管理人员设�
 - **后端**: Next.js API Routes
 - **数据库**: PostgreSQL (Supabase) + Prisma 6 ORM
 - **国际化**: 中文 + 印尼文
+- **部署**: Docker + Docker Compose + nginx + Let's Encrypt
+
+### 生产架构
+
+```
+┌─────────────────────────────────────────────────────┐
+│                    互联网                            │
+└────────────────────┬────────────────────────────────┘
+                     │ HTTPS (443)
+                     ▼
+        ┌────────────────────────┐
+        │   nginx (host:80/443)  │
+        │  - SSL/TLS 终止        │
+        │  - 反向代理            │
+        │  - 路由 /visa          │
+        └────────────┬───────────┘
+                     │ HTTP (3001)
+                     ▼
+        ┌────────────────────────┐
+        │  Next.js App (3001)    │
+        │  - React 前端          │
+        │  - API Routes          │
+        │  - Prisma ORM          │
+        └────────────┬───────────┘
+                     │ TCP (5432)
+                     ▼
+        ┌────────────────────────┐
+        │  Supabase PostgreSQL   │
+        │  - 数据存储            │
+        │  - 业务逻辑            │
+        └────────────────────────┘
+```
 
 ---
 
@@ -188,9 +250,31 @@ npm start
 ```
 
 ### Docker 部署
+
+**使用 Docker Compose（推荐）**
 ```bash
-docker build -t bantu-visa-helper .
-docker run -p 3000:3000 bantu-visa-helper
+# 启动应用
+docker compose up -d
+
+# 查看日志
+docker compose logs -f visa-app
+
+# 停止应用
+docker compose down
+```
+
+**配置说明**
+- 应用运行在容器内的 3001 端口
+- nginx 反向代理在 80/443 端口
+- 使用 host 网络模式以支持外部数据库连接
+- 支持 HTTP 自动重定向到 HTTPS
+
+**环境变量**
+```yaml
+# docker-compose.yml
+environment:
+  - NODE_ENV=production
+  - DATABASE_URL=postgresql://user:password@host:5432/database
 ```
 
 ---
