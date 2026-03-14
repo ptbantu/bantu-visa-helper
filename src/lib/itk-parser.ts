@@ -1,12 +1,7 @@
 import type { PDFDocument } from 'pdfjs-dist';
 import { extractTextFromPdfWithTesseract } from './ocr-service';
 
-/**
- * 从 PDF Buffer 提取文本
- */
-async function extractTextFromPDF(pdfBuffer: Buffer, filename: string): Promise<string> {
-  return extractTextFromPdfWithTesseract(pdfBuffer, filename);
-}
+export interface ITKDocumentData {
   // 证件状态类
   permit_number?: string;
   expiry_date?: string;
@@ -42,10 +37,9 @@ async function extractTextFromPDF(pdfBuffer: Buffer, filename: string): Promise<
 
 /**
  * 从 PDF Buffer 提取文本
- * 注：在 Next.js 中 pdf-parse 导入有问题，改用图片识别方式
  */
-async function extractTextFromPDF(pdfBuffer: Buffer): Promise<string> {
-  throw new Error('PDF 文本提取已禁用，请使用图片识别方式');
+async function extractTextFromPDF(pdfBuffer: Buffer, filename: string): Promise<string> {
+  return extractTextFromPdfWithTesseract(pdfBuffer, filename);
 }
 
 /**
@@ -53,7 +47,6 @@ async function extractTextFromPDF(pdfBuffer: Buffer): Promise<string> {
  */
 function isITKDocument(text: string): boolean {
   return text.includes('IZIN TINGGAL KUNJUNGAN') || text.includes('Visit Stay Permit');
-}
 }
 
 /**
