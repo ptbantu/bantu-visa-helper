@@ -277,7 +277,11 @@ async function processPDFAttachment(
   }
 }
 
-async function processEmail(imap: ImapFlow, uid: number): Promise<boolean> {
+async function processEmail(
+  imap: ImapFlow,
+  uid: number,
+  processedMessageIds: Set<string>
+): Promise<{ success: boolean; skipped: boolean }> {
   try {
     console.log(`\n处理邮件 UID: ${uid}`);
 
@@ -285,21 +289,26 @@ async function processEmail(imap: ImapFlow, uid: number): Promise<boolean> {
 
     if (!message) {
       console.error(`无法获取邮件 UID ${uid}`);
-      return false;
+      return { success: false, skipped: false };
     }
 
     const parsed = await simpleParser(message.source);
+    const messageId = parsed.messageId || `uid-${uid}`;
+
+    // 检查是否已处理过
+    if (processedMessageIds.has(messageId)) {
+      console.log(`邮件 ${messageId} 已处理过，跳过`);
+      return { success: true, skipped: true };
+    }
 
     const pdfAttachments = await extractPDFAttachments(parsed);
 
     if (pdfAttachments.length === 0) {
       console.log(`邮件 UID ${uid} 没有 PDF 附件，跳过`);
-      return true;
+      return { success: true, skipped: false };
     }
 
     console.log(`找到 ${pdfAttachments.length} 个 PDF 附件`);
-
-    const messageId = parsed.messageId || `uid-${uid}`;
 
     const processResults: { success: boolean; logId: string }[] = [];
     for (const pdfAttachment of pdfAttachments) {
@@ -321,14 +330,14 @@ async function processEmail(imap: ImapFlow, uid: number): Promise<boolean> {
       console.warn(`邮件 UID ${uid} 中有处理失败的 PDF，保持未读状态以便下次重试`);
     }
 
-    return allSuccess;
+    return { success: allSuccess, skipped: false };
   } catch (error) {
     console.error(`处理邮件 UID ${uid} 异常:`, error);
-    return false;
+    return { success: false, skipped: false };
   }
 }
 
-export async function fetchEmailsFromImap(): Promise<{ processedCount: number; successCount: number; failedCount: number }> {
+export async function fetchEmailsFromImap(): Promise<{ processedCount: number; successCount: number; failedCount: number; skippedCount: number }> {
   const imapConfig = {
     host: process.env.IMAP_HOST || 'imap.gmail.com',
     port: parseInt(process.env.IMAP_PORT || '993'),
@@ -341,7 +350,7 @@ export async function fetchEmailsFromImap(): Promise<{ processedCount: number; s
 
   if (!imapConfig.auth.pass) {
     console.error('EMAIL_PASSWORD 未配置');
-    return { processedCount: 0, successCount: 0, failedCount: 0 };
+    return { processedCount: 0, successCount: 0, failedCount: 0, skippedCount: 0 };
   }
 
   console.log(`使用 IMAP 配置: ${imapConfig.host}:${imapConfig.port}, 账户: ${imapConfig.auth.user}`);
@@ -350,6 +359,7 @@ export async function fetchEmailsFromImap(): Promise<{ processedCount: number; s
   let processedCount = 0;
   let successCount = 0;
   let failedCount = 0;
+  let skippedCount = 0;
 
   try {
     console.log('连接到 IMAP 服务器...');
@@ -360,41 +370,39 @@ export async function fetchEmailsFromImap(): Promise<{ processedCount: number; s
     const mailbox = await imap.mailboxOpen('INBOX');
     console.log(`✓ 收件箱打开成功，共 ${mailbox.exists} 封邮件`);
 
-    // 构建搜索条件
-    const emailFilter = process.env.EMAIL_FILTER || 'no-reply@notif.imigrasi.go.id';
-    const daysBack = parseInt(process.env.EMAIL_DAYS_BACK || '7');
-
-    // 计算日期范围
-    const sinceDate = new Date();
-    sinceDate.setDate(sinceDate.getDate() - daysBack);
-
-    console.log(`搜索条件: 来自 ${emailFilter}，最近 ${daysBack} 天的未读邮件`);
-    console.log(`日期范围: ${sinceDate.toISOString()} 至今`);
-
-    // 使用 IMAP 搜索条件过滤
-    const searchResults = await imap.search({
-      seen: false,
-      from: emailFilter,
-      since: sinceDate,
+    // 获取所有已处理成功的 messageId
+    console.log('获取已处理成功的邮件列表...');
+    const processedEmails = await prisma.emailProcessLog.findMany({
+      where: { status: 'SUCCESS' },
+      select: { messageId: true },
     });
+    const processedMessageIds = new Set(processedEmails.map(e => e.messageId));
+    console.log(`✓ 已处理成功的邮件数: ${processedMessageIds.size}`);
+
+    console.log('搜索未读邮件...');
+    const searchResults = await imap.search({ seen: false });
 
     if (!searchResults || searchResults.length === 0) {
-      console.log('没有符合条件的未读邮件');
+      console.log('没有未读邮件');
       await imap.logout();
-      return { processedCount: 0, successCount: 0, failedCount: 0 };
+      return { processedCount, successCount, failedCount, skippedCount };
     }
 
-    console.log(`找到 ${searchResults.length} 封符合条件的未读邮件`);
+    console.log(`找到 ${searchResults.length} 封未读邮件`);
 
     for (const uid of searchResults) {
       try {
-        processedCount++;
-        const success = await processEmail(imap, uid);
+        const result = await processEmail(imap, uid, processedMessageIds);
 
-        if (success) {
-          successCount++;
+        if (result.skipped) {
+          skippedCount++;
         } else {
-          failedCount++;
+          processedCount++;
+          if (result.success) {
+            successCount++;
+          } else {
+            failedCount++;
+          }
         }
       } catch (error) {
         console.error(`处理邮件 UID ${uid} 异常:`, error);
@@ -406,7 +414,7 @@ export async function fetchEmailsFromImap(): Promise<{ processedCount: number; s
     await imap.logout();
     console.log('✓ IMAP 连接已关闭');
 
-    return { processedCount, successCount, failedCount };
+    return { processedCount, successCount, failedCount, skippedCount };
   } catch (error) {
     console.error('IMAP 处理过程中出错:', error);
     try {
@@ -414,6 +422,6 @@ export async function fetchEmailsFromImap(): Promise<{ processedCount: number; s
     } catch (logoutError) {
       console.error('关闭 IMAP 连接失败:', logoutError);
     }
-    return { processedCount, successCount, failedCount };
+    return { processedCount, successCount, failedCount, skippedCount };
   }
 }

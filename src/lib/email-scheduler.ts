@@ -43,7 +43,11 @@ async function executeEmailFetch() {
   try {
     console.log(`\n=== 邮件定时拉取 [${new Date().toISOString()}] ===`);
     const result = await fetchEmailsFromImap();
-    console.log(`✓ 邮件拉取完成: 处理 ${result.processedCount} 封，成功 ${result.successCount} 封，失败 ${result.failedCount} 封`);
+    console.log(`✓ 邮件拉取完成:`);
+    console.log(`  - 处理: ${result.processedCount} 封`);
+    console.log(`  - 成功: ${result.successCount} 封`);
+    console.log(`  - 失败: ${result.failedCount} 封`);
+    console.log(`  - 跳过: ${result.skippedCount} 封`);
   } catch (error) {
     console.error('邮件拉取异常:', error);
   }
