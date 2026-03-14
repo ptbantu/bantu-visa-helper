@@ -34,49 +34,68 @@ function validateVisaData(data: any): data is ParsedVisaData {
   );
 }
 
-async function parseWithQwen(pdfText: string): Promise<ParsedVisaData | null> {
+async function parseWithDeepSeek(imageBase64: string): Promise<ParsedVisaData | null> {
   try {
-    const apiKey = process.env.DASHSCOPE_API_KEY || process.env.QWEN_VL_API_KEY;
+    const apiKey = process.env.DEEPSEEK_API_KEY;
     if (!apiKey) {
-      throw new Error('DASHSCOPE_API_KEY 或 QWEN_VL_API_KEY 未配置');
+      throw new Error('DEEPSEEK_API_KEY 未配置');
     }
 
-    console.log('  [3.3] 调用 Qwen API...');
-    console.log(`  API Key 长度: ${apiKey.length}`);
+    console.log('  [3.3] 调用 DeepSeek API...');
 
-    const systemPrompt = `你是一个印尼签证解析专家。请从以下图片中提取：
-- customer_name: 客户姓名
-- passport_no: 护照号码
-- visa_type: 签证类型
-- expiry_date: 到期日期（格式：YYYY-MM-DD）
-- entry_date: 入境日期（格式：YYYY-MM-DD，如果没有则为 null）
+    const systemPrompt = `你是一个印尼签证解析专家。请从以下图片中提取签证信息，并输出纯净的 JSON 格式：
+{
+  "customer_name": "客户姓名",
+  "passport_no": "护照号码",
+  "visa_type": "签证类型",
+  "expiry_date": "到期日期（格式：YYYY-MM-DD）",
+  "entry_date": "入境日期（格式：YYYY-MM-DD，如果没有则为 null）"
+}
 
-必须且仅输出纯净的 JSON 字符串，不要带有 markdown 标记（如 \`\`\`json）。`;
+重要：
+- 仅输出 JSON，不要带有 markdown 标记
+- 日期格式必须是 YYYY-MM-DD
+- 如果字段无法识别，使用 null`;
 
-    const requestBody = {
-      model: 'qwen-vl-max',
-      messages: [
-        { role: 'system', content: systemPrompt },
-        { role: 'user', content: pdfText },
-      ],
-      temperature: 0.3,
-      max_tokens: 1024,
-    };
-
-    const response = await fetch('https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions', {
+    const response = await fetch('https://api.deepseek.com/chat/completions', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
         'Authorization': `Bearer ${apiKey}`,
       },
-      body: JSON.stringify(requestBody),
+      body: JSON.stringify({
+        model: 'deepseek-vision',
+        messages: [
+          {
+            role: 'system',
+            content: systemPrompt,
+          },
+          {
+            role: 'user',
+            content: [
+              {
+                type: 'image_url',
+                image_url: {
+                  url: `data:image/png;base64,${imageBase64}`,
+                },
+              },
+              {
+                type: 'text',
+                text: '请提取这张签证图片中的信息',
+              },
+            ],
+          },
+        ],
+        temperature: 0.3,
+        max_tokens: 1024,
+      }),
     });
 
     if (!response.ok) {
       const errorText = await response.text();
-      console.error(`  Qwen API 响应: ${response.status} ${response.statusText}`);
+      console.error(`  DeepSeek API 响应: ${response.status} ${response.statusText}`);
       console.error(`  错误详情: ${errorText}`);
-      throw new Error(`Qwen API 错误: ${response.status} ${response.statusText}`);
+      throw new Error(`DeepSeek API 错误: ${response.status} ${response.statusText}`);
     }
 
     const result = await response.json();
@@ -86,27 +105,26 @@ async function parseWithQwen(pdfText: string): Promise<ParsedVisaData | null> {
       const parsedData = JSON.parse(cleanedJson);
 
       if (validateVisaData(parsedData)) {
-        console.log('  ✓ Qwen 识别成功');
+        console.log('  ✓ DeepSeek 识别成功');
         return parsedData;
       }
     }
 
     return null;
   } catch (error) {
-    console.error('Qwen 解析失败:', error);
+    console.error('DeepSeek 解析失败:', error);
     return null;
   }
 }
 
 async function smartParseVisaData(pdfBuffer: Buffer, filename: string): Promise<ParsedVisaData | null> {
   try {
-    console.log('  [3] 使用 Qwen 图片识别进行 PDF 解析...');
+    console.log('  [3] 使用 DeepSeek 图片识别进行 PDF 解析...');
     const images = await convertPdfToImages(pdfBuffer, filename);
     if (images.length > 0) {
-      const qwenFormats = imageToQwenFormat(images);
-      // 如果是数组，取第一张图片（通常签证只有一页）
-      const firstImage = Array.isArray(qwenFormats) ? qwenFormats[0] : qwenFormats;
-      return await parseWithQwen(JSON.stringify(firstImage));
+      // 转换第一张图片为 Base64（通常签证只有一页）
+      const firstImageBase64 = images[0].toString('base64');
+      return await parseWithDeepSeek(firstImageBase64);
     }
 
     throw new Error('无法提取 PDF 内容');
