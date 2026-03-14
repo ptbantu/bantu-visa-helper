@@ -14,7 +14,7 @@ export async function GET(request: Request) {
     const [reminders, total] = await Promise.all([
       prisma.reminder.findMany({
         where,
-        orderBy: { days_left: 'asc' },
+        orderBy: { expiry_date: 'desc' },
         take: limit,
         skip: offset,
       }),
@@ -40,6 +40,7 @@ export async function POST(request: Request) {
     const visas = await prisma.visaRecord.findMany({
       where: { reminder_enabled: true },
       include: { customer: true, visaType: true },
+      orderBy: { expiry_date: 'desc' },
     });
 
     const now = new Date();

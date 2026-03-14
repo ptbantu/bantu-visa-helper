@@ -30,7 +30,7 @@ export async function GET(request: Request) {
           customer: true,
           visaType: true,
         },
-        orderBy: { expiry_date: 'asc' },
+        orderBy: { expiry_date: 'desc' },
         take: limit,
         skip: offset,
       }),
