@@ -33,7 +33,7 @@ import { VisaRecord } from "@/src/types/api";
 import { KitasWorkflow } from "@/src/components/KitasWorkflow";
 import { EditContactDialog } from "@/src/components/EditContactDialog";
 import { SidebarTrigger } from "@/src/components/ui/sidebar";
-import { getVisaIcon } from "@/app/page";
+import { getVisaIcon } from "@/src/lib/visa-icon";
 
 function KitasContent() {
   const { t, language } = useLanguage();

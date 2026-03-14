@@ -36,25 +36,7 @@ import { EditContactDialog } from "@/src/components/EditContactDialog";
 import { SidebarTrigger } from "@/src/components/ui/sidebar";
 
 import { VisaType } from "@/src/types/api";
-
-export const getVisaIcon = (visaType: VisaType | string | null | undefined) => {
-  const code = typeof visaType === 'string' ? visaType : visaType?.code || '';
-  const nameZh = typeof visaType === 'string' ? '' : visaType?.nameZh || '';
-
-  if (code.includes("B211A") || nameZh.includes("访问") || nameZh.includes("旅游")) {
-    return <Plane className="h-4 w-4 text-blue-500 shrink-0" />;
-  }
-  if (nameZh.includes("工作") || code.includes("C312")) {
-    return <Briefcase className="h-4 w-4 text-amber-600 shrink-0" />;
-  }
-  if (nameZh.includes("投资") || code.includes("C313") || code.includes("C314")) {
-    return <Building className="h-4 w-4 text-emerald-600 shrink-0" />;
-  }
-  if (code.includes("ITAS") || code.includes("KITAS")) {
-    return <CreditCard className="h-4 w-4 text-purple-600 shrink-0" />;
-  }
-  return <FileText className="h-4 w-4 text-slate-500 shrink-0" />;
-};
+import { getVisaIcon } from "@/src/lib/visa-icon";
 
 function DashboardContent() {
   const { t, language } = useLanguage();

@@ -42,7 +42,7 @@ export const StatusBadge = ({ status, error }: StatusBadgeProps) => {
       {error && (
         <TooltipProvider>
           <Tooltip>
-            <TooltipTrigger asChild>
+            <TooltipTrigger>
               <AlertCircle className="h-4 w-4 text-red-500 cursor-help flex-shrink-0" />
             </TooltipTrigger>
             <TooltipContent className="max-w-xs">

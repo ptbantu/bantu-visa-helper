@@ -14,7 +14,7 @@ export async function PUT(
     if (data.whatsapp !== undefined) updateData.whatsapp = data.whatsapp;
     if (data.reminder_enabled !== undefined) updateData.reminder_enabled = data.reminder_enabled;
 
-    const visa = await prisma.visaRecord.update({
+    const visa = await prisma.visaRecord.updateMany({
       where: { passport_no },
       data: updateData
     });
@@ -32,7 +32,7 @@ export async function DELETE(
 ) {
   try {
     const { passport_no } = await params;
-    await prisma.visaRecord.delete({
+    await prisma.visaRecord.deleteMany({
       where: { passport_no }
     });
     return NextResponse.json({ success: true });

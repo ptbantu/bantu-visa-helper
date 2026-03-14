@@ -16,22 +16,30 @@ async function main() {
     // 初始化签证数据
     console.log('初始化签证数据...');
     const visas = await Promise.all(
-      mockVisaData.map(visa =>
-        prisma.visaRecord.create({
-          data: {
-            customer_name: visa.customer_name,
+      mockVisaData.map(async visa => {
+        // 先创建或获取 Customer
+        const customer = await prisma.customer.upsert({
+          where: { passport_no: visa.passport_no },
+          update: { name: visa.customer_name },
+          create: {
             passport_no: visa.passport_no,
-            visa_type: visa.visa_type,
+            name: visa.customer_name,
+          },
+        });
+
+        return prisma.visaRecord.create({
+          data: {
+            customerId: customer.id,
+            visaTypeCode: 'UNKNOWN',
+            passport_no: visa.passport_no,
             expiry_date: new Date(visa.expiry_date),
             is_urgent: visa.is_urgent || false,
-            phone: visa.phone || null,
-            whatsapp: visa.whatsapp || null,
             reminder_enabled: visa.reminder_enabled || false,
             entry_date: visa.entry_date ? new Date(visa.entry_date) : null,
             port_of_entry: visa.port_of_entry || null,
           },
-        })
-      )
+        });
+      })
     );
     console.log(`✓ 创建了 ${visas.length} 条签证记录`);
 
@@ -80,12 +88,16 @@ async function main() {
       else if (daysLeft <= 5) { stage = '阶段一 (5天)'; status = '企微推送'; }
 
       if (daysLeft <= 5) {
+        const customer = await prisma.customer.findUnique({
+          where: { passport_no: visa.passport_no },
+        });
+
         await prisma.reminder.create({
           data: {
             visa_id: visa.id,
-            customer_name: visa.customer_name,
+            customer_name: customer?.name || 'Unknown',
             passport_no: visa.passport_no,
-            visa_type: visa.visa_type,
+            visa_type: 'UNKNOWN',
             expiry_date: visa.expiry_date,
             days_left: daysLeft,
             stage,

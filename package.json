@@ -6,7 +6,7 @@
   "scripts": {
     "dev": "next dev -p 8081 -H 0.0.0.0",
     "build": "next build",
-    "start": "next start -p 3000 -H 0.0.0.0",
+    "start": "next start -p 3001 -H 0.0.0.0",
     "lint": "tsc --noEmit",
     "db:seed": "npx tsx prisma/seed.ts"
   },
@@ -29,6 +29,7 @@
     "dotenv": "^17.2.3",
     "express": "^4.21.2",
     "framer-motion": "^12.35.2",
+    "http-proxy": "^1.18.1",
     "imap": "^0.8.19",
     "imapflow": "^1.2.13",
     "lucide-react": "^0.546.0",
@@ -36,6 +37,8 @@
     "motion": "^12.23.24",
     "next": "^15.1.7",
     "pdf-parse": "^2.4.5",
+    "pdf2pic": "^3.2.0",
+    "pdfjs-dist": "^5.5.207",
     "pg": "^8.20.0",
     "prisma": "^6.19.2",
     "react": "^19.0.0",

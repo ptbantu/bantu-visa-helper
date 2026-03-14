@@ -3,7 +3,7 @@ import { VisaRecord } from "@/src/types/api";
 
 const today = new Date();
 
-export const mockVisaData: VisaRecord[] = [
+export const mockVisaData: any[] = [
   {
     passport_no: "E12345678",
     expiry_date: format(addDays(today, 15), "yyyy-MM-dd"),

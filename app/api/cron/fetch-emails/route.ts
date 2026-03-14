@@ -7,7 +7,7 @@ import { convertPdfToImages, imageToQwenFormat } from '@/src/lib/pdf-to-image';
 import { v4 as uuidv4 } from 'uuid';
 
 // pdf-parse 导入
-const pdfParse = require('pdf-parse/lib/pdf-parse.js');
+const pdfParse = require('pdf-parse');
 
 // ============================================================================
 // 类型定义
