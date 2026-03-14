@@ -20,6 +20,9 @@ WORKDIR /app
 
 ENV NODE_ENV=production
 
+# 安装 GraphicsMagick 用于 PDF 转图片
+RUN apk add --no-cache graphicsmagick
+
 COPY package*.json ./
 RUN npm ci --only=production
 

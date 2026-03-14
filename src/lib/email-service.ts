@@ -5,7 +5,20 @@ import { uploadPdfToOSS } from '@/src/lib/oss';
 import { convertPdfToImages, imageToQwenFormat } from '@/src/lib/pdf-to-image';
 import { v4 as uuidv4 } from 'uuid';
 
-const pdfParse = require('pdf-parse');
+// 动态导入 pdf-parse
+let pdfParse: any = null;
+
+async function getPdfParser() {
+  if (!pdfParse) {
+    try {
+      pdfParse = (await import('pdf-parse/lib/pdf-parse.js')).default;
+    } catch {
+      // 备用导入方式
+      pdfParse = require('pdf-parse');
+    }
+  }
+  return pdfParse;
+}
 
 interface ParsedVisaData {
   customer_name: string;
@@ -22,7 +35,8 @@ interface PDFAttachment {
 
 async function extractTextFromPDF(pdfBuffer: Buffer): Promise<string> {
   try {
-    const data = await pdfParse(pdfBuffer);
+    const parser = await getPdfParser();
+    const data = await parser(pdfBuffer);
     return data.text;
   } catch (error) {
     console.error('提取 PDF 文本失败:', error);
@@ -103,18 +117,23 @@ async function parseWithQwen(pdfText: string): Promise<ParsedVisaData | null> {
 
 async function smartParseVisaData(pdfBuffer: Buffer, filename: string): Promise<ParsedVisaData | null> {
   try {
-    const images = await convertPdfToImages(pdfBuffer, filename);
-    if (images.length > 0) {
-      const qwenFormat = await imageToQwenFormat(images);
-      return await parseWithQwen(qwenFormat);
+    // 尝试使用图片识别（需要 GraphicsMagick）
+    try {
+      const images = await convertPdfToImages(pdfBuffer, filename);
+      if (images.length > 0) {
+        const qwenFormat = await imageToQwenFormat(images);
+        return await parseWithQwen(qwenFormat);
+      }
+    } catch (imageError) {
+      console.warn('图片识别失败，降级到文本识别:', imageError);
     }
 
+    // 降级到文本识别
     const pdfText = await extractTextFromPDF(pdfBuffer);
     return await parseWithQwen(pdfText);
   } catch (error) {
     console.error('智能解析失败:', error);
-    const pdfText = await extractTextFromPDF(pdfBuffer);
-    return await parseWithQwen(pdfText);
+    return null;
   }
 }
 
