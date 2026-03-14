@@ -3,9 +3,11 @@
 ## 项目概述
 Bantu 签证助手 - 印尼签证管理系统的文本识别模块
 
-## 当前状态：已完成
+## 当前状态：已完成 ✅
 
-### 文本识别方案演进
+### 最终方案：Qwen图片识别（生产就绪）
+
+系统已完全统一使用Qwen进行PDF识别和文本提取。所有已弃用的方案（Tesseract.js、pdf-parse、ITK解析器）已从代码库中移除。
 
 #### 第一阶段：Qwen 图片识别（初始方案）
 - **状态**：✅ 已实现
@@ -19,30 +21,39 @@ Bantu 签证助手 - 印尼签证管理系统的文本识别模块
   - 有成本
 
 #### 第二阶段：pdf-parse 本地 PDF 解析
-- **状态**：❌ 已放弃
+- **状态**：❌ 已放弃并删除
 - **原因**：
   - 在 Next.js 中导入问题
   - 导出方式不兼容
   - 无法正确加载模块
 
 #### 第三阶段：Tesseract.js OCR
-- **状态**：❌ 已放弃
+- **状态**：❌ 已放弃并删除
 - **原因**：
   - 在 Next.js 生产构建中找不到 worker 脚本
   - 模块加载错误：`Cannot find module '/home/bantu/dev/bantu-visa-helper/.next/worker-script/node/index.js'`
   - 兼容性问题无法解决
 
-#### 第四阶段：Qwen 图片识别（最终方案）
-- **状态**：✅ 已实现并验证
+#### 第四阶段：ITK文档解析器
+- **状态**：❌ 已放弃并删除
+- **原因**：
+  - 仅用于特定的印尼ITK签证文档
+  - Qwen可以直接识别所有类型的签证文档
+  - 代码复杂度高，维护成本大
+  - 已从代码库中完全移除
+
+#### 第五阶段：Qwen图片识别（最终方案）
+- **状态**：✅ 已实现并验证（生产就绪）
 - **方法**：
   1. PDF → GraphicsMagick 转图片
-  2. 图片 → Qwen 识别文本
-  3. 文本 → ITK 解析器提取字段
+  2. 图片 → Qwen 识别文本和字段
+  3. 直接提取签证信息（客户名、护照号、签证类型、到期日期等）
 - **优点**：
   - 稳定可靠
   - 准确率高
-  - 支持多语言
+  - 支持多种签证类型
   - 无兼容性问题
+  - 代码简洁易维护
 
 ### 系统依赖
 
@@ -82,66 +93,33 @@ PDF → 转图片（GraphicsMagick）
 | 文件 | 功能 | 状态 |
 |------|------|------|
 | `src/lib/email-service.ts` | 邮件处理和 PDF 解析 | ✅ 完成 |
-| `src/lib/itk-parser.ts` | ITK 文档解析 | ✅ 完成 |
-| `src/lib/ocr-service.ts` | OCR 服务（已禁用） | ⚠️ 禁用 |
 | `src/lib/pdf-to-image.ts` | PDF 转图片 | ✅ 完成 |
 | `src/lib/email-scheduler.ts` | 邮件定时拉取 | ✅ 完成 |
 | `src/lib/reminder-service.ts` | 提醒查询服务 | ✅ 完成 |
 
 ### 提取的字段
 
-#### 证件状态类
-- permit_number - 许可编号
-- expiry_date - 居留许可有效期
-- stay_index - 居留许可索引代码
-- document_type - 许可全称
-
-#### 持有人身份类
-- full_name - 全名
-- place_of_birth - 出生地
-- passport_number - 护照号码
-- passport_expiry - 护照过期日期
-- nationality - 国籍
-- gender - 性别
-
-#### 居留细节类
-- address - 在印尼的登记住址
-- activity - 准许从事的活动
-- occupation - 职业/职位
-- guarantor - 担保人
-
-#### 签发与机关类
-- ministry_name - 部门名称
-- issuing_office - 签发办公室
-- issuing_date - 签发日期
-- issuing_location - 签发地点
-- office_address - 办公地址
+#### 基础字段（Qwen直接提取）
+- customer_name - 客户姓名
+- passport_no - 护照号码
+- visa_type - 签证类型
+- expiry_date - 到期日期（格式：YYYY-MM-DD）
+- entry_date - 入境日期（格式：YYYY-MM-DD，可选）
 
 ### 容错处理
 
 - ✅ 缺失字段不报错
 - ✅ 日期格式自动转换为 YYYY-MM-DD
-- ✅ 支持多种关键字匹配（中英文）
-- ✅ 非 ITK 文档标记为 SKIPPED
-- ✅ EVISA 文档标记为 SKIPPED
+- ✅ 支持多种签证类型识别
 - ✅ 解析失败标记为 FAILED
 
 ### 数据库更新
 
-#### Customer 表新增字段
-- place_of_birth - 出生地
-- passport_expiry - 护照过期日期
-- nationality - 国籍
-- gender - 性别
-- address - 地址
-- activity - 活动
-- occupation - 职业
-- guarantor - 担保人
-- ministry_name - 部门名称
-- issuing_office - 签发办公室
-- issuing_date - 签发日期
-- issuing_location - 签发地点
-- office_address - 办公地址
+#### Customer 表字段
+- passport_no - 护照号码（主键）
+- name - 客户姓名
+
+注：已删除的ITK扩展字段（place_of_birth、passport_expiry等）仍保留在数据库中以保持向后兼容性，但不再通过Qwen识别填充。
 
 ### 环境变量配置
 
@@ -163,14 +141,15 @@ DATABASE_URL=postgresql://postgres:BantuCRM123%40@db.bzdelpmcewjdvmgyafux.supaba
 ### 已解决的问题
 
 1. ✅ PDF 文本提取失败 → 改用 Qwen 图片识别
-2. ✅ Tesseract.js 兼容性问题 → 禁用并改用 Qwen
-3. ✅ pdf-parse 导入错误 → 移除依赖
-4. ✅ GraphicsMagick 缺失 → 已安装
-5. ✅ Ghostscript 缺失 → 已安装
-6. ✅ 邮件过滤器配置 → 已实现
-7. ✅ 邮件去重处理 → 已实现
-8. ✅ 临时文件管理 → 已实现
-9. ✅ 数据库字段扩展 → 已完成
+2. ✅ Tesseract.js 兼容性问题 → 删除并改用 Qwen
+3. ✅ pdf-parse 导入错误 → 删除依赖
+4. ✅ ITK 解析器复杂度高 → 删除并改用 Qwen 直接识别
+5. ✅ GraphicsMagick 缺失 → 已安装
+6. ✅ Ghostscript 缺失 → 已安装
+7. ✅ 邮件过滤器配置 → 已实现
+8. ✅ 邮件去重处理 → 已实现
+9. ✅ 临时文件管理 → 已实现
+10. ✅ Docker 构建错误 → 已修复
 
 ### 测试状态
 
@@ -184,10 +163,11 @@ DATABASE_URL=postgresql://postgres:BantuCRM123%40@db.bzdelpmcewjdvmgyafux.supaba
 ### 下一步计划
 
 - [ ] 性能优化（批量处理）
-- [ ] 识别准确率提升
+- [ ] 识别准确率监控
 - [ ] 错误恢复机制
 - [ ] 监控和告警系统
 - [ ] 用户界面改进
+- [ ] 支持更多签证类型
 
 ---
 
