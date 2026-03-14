@@ -2,7 +2,6 @@ import { ImapFlow } from 'imapflow';
 import { simpleParser } from 'mailparser';
 import prisma from '@/src/lib/prisma';
 import { uploadPdfToOSS } from '@/src/lib/oss';
-import { convertPdfToImages, imageToQwenFormat } from '@/src/lib/pdf-to-image';
 import { v4 as uuidv4 } from 'uuid';
 
 interface ParsedVisaData {
@@ -34,16 +33,16 @@ function validateVisaData(data: any): data is ParsedVisaData {
   );
 }
 
-async function parseWithDeepSeek(imageBase64: string): Promise<ParsedVisaData | null> {
+async function parseWithDeepSeek(pdfBuffer: Buffer): Promise<ParsedVisaData | null> {
   try {
     const apiKey = process.env.DEEPSEEK_API_KEY;
     if (!apiKey) {
       throw new Error('DEEPSEEK_API_KEY 未配置');
     }
 
-    console.log('  [3.3] 调用 DeepSeek API...');
+    console.log('  [3.3] 调用 DeepSeek API 处理 PDF...');
 
-    const systemPrompt = `你是一个印尼签证解析专家。请从以下图片中提取签证信息，并输出纯净的 JSON 格式：
+    const systemPrompt = `你是一个印尼签证解析专家。请从 PDF 文件中提取签证信息，并输出纯净的 JSON 格式：
 {
   "customer_name": "客户姓名",
   "passport_no": "护照号码",
@@ -54,9 +53,7 @@ async function parseWithDeepSeek(imageBase64: string): Promise<ParsedVisaData | 
 
 重要：仅输出 JSON，不要带有 markdown 标记`;
 
-    // 限制 Base64 大小，只发送前 100KB
-    const maxBase64Length = 100000;
-    const truncatedBase64 = imageBase64.substring(0, maxBase64Length);
+    const pdfBase64 = pdfBuffer.toString('base64');
 
     const response = await fetch('https://api.deepseek.com/chat/completions', {
       method: 'POST',
@@ -73,7 +70,19 @@ async function parseWithDeepSeek(imageBase64: string): Promise<ParsedVisaData | 
           },
           {
             role: 'user',
-            content: `分析签证图片：data:image/png;base64,${truncatedBase64}`,
+            content: [
+              {
+                type: 'text',
+                text: '请分析这个PDF文件中的签证信息',
+              },
+              {
+                type: 'document',
+                document: {
+                  type: 'application/pdf',
+                  data: pdfBase64,
+                },
+              },
+            ],
           },
         ],
         temperature: 0.3,
@@ -109,15 +118,8 @@ async function parseWithDeepSeek(imageBase64: string): Promise<ParsedVisaData | 
 
 async function smartParseVisaData(pdfBuffer: Buffer, filename: string): Promise<ParsedVisaData | null> {
   try {
-    console.log('  [3] 使用 DeepSeek 图片识别进行 PDF 解析...');
-    const images = await convertPdfToImages(pdfBuffer, filename);
-    if (images.length > 0) {
-      // 转换第一张图片为 Base64（通常签证只有一页）
-      const firstImageBase64 = images[0].toString('base64');
-      return await parseWithDeepSeek(firstImageBase64);
-    }
-
-    throw new Error('无法提取 PDF 内容');
+    console.log('  [3] 使用 DeepSeek 直接处理 PDF...');
+    return await parseWithDeepSeek(pdfBuffer);
   } catch (error) {
     console.error('PDF 解析失败:', error);
     return null;
