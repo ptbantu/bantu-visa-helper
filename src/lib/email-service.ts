@@ -36,9 +36,9 @@ function validateVisaData(data: any): data is ParsedVisaData {
 
 async function parseWithQwen(pdfText: string): Promise<ParsedVisaData | null> {
   try {
-    const apiKey = process.env.DASHSCOPE_API_KEY;
+    const apiKey = process.env.DASHSCOPE_API_KEY || process.env.QWEN_VL_API_KEY;
     if (!apiKey) {
-      throw new Error('DASHSCOPE_API_KEY 未配置');
+      throw new Error('DASHSCOPE_API_KEY 或 QWEN_VL_API_KEY 未配置');
     }
 
     const systemPrompt = `你是一个印尼签证解析专家。请从以下图片中提取：
