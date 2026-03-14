@@ -5,18 +5,11 @@ services:
     build: .
     container_name: visa-app
     network_mode: host
+    env_file:
+      - .env.docker
     environment:
       - NODE_ENV=production
       - DATABASE_URL=postgresql://postgres:BantuCRM123%40@db.bzdelpmcewjdvmgyafux.supabase.co:5432/postgres
-      - QWEN_VL_API_KEY=${QWEN_VL_API_KEY}
-      - WECHAT_WEBHOOK_URL=${WECHAT_WEBHOOK_URL}
-      - EMAIL_ACCOUNT=${EMAIL_ACCOUNT}
-      - EMAIL_PASSWORD=${EMAIL_PASSWORD}
-      - EMAIL_FILTER=${EMAIL_FILTER}
-      - OSS_ENDPOINT=${OSS_ENDPOINT}
-      - OSS_BUCKET_NAME=${OSS_BUCKET_NAME}
-      - OSS_ACCESS_KEY_ID=${OSS_ACCESS_KEY_ID}
-      - OSS_ACCESS_KEY_SECRET=${OSS_ACCESS_KEY_SECRET}
     volumes:
       - ./prisma:/app/prisma
     restart: unless-stopped
