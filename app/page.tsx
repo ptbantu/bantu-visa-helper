@@ -372,7 +372,7 @@ function DashboardContent() {
                           <span>{formatVisaType(record.visaType, language as 'zh' | 'id')}</span>
                         </div>
                       </TableCell>
-                      <TableCell className="py-1.5 px-3 text-[13px]">{record.expiry_date}</TableCell>
+                      <TableCell className="py-1.5 px-3 text-[13px]">{new Date(record.expiry_date).toLocaleDateString('zh-CN')}</TableCell>
                       <TableCell className="py-1.5 px-3 text-[13px] text-right">
                         <span className={isExpiredOrSoon ? "text-red-600 font-semibold" : "text-slate-600"}>
                           {daysLeft < 0 ? "过期" : `${daysLeft} 天`}
@@ -488,7 +488,7 @@ function DashboardContent() {
                   <Calendar className="h-4 w-4" /> 有效期至
                 </div>
                 <div className="col-span-2 text-sm text-slate-900">
-                  {selectedRecord.expiry_date}
+                  {new Date(selectedRecord.expiry_date).toLocaleDateString('zh-CN')}
                 </div>
               </div>
 

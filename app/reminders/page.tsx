@@ -43,7 +43,7 @@ export default function RemindersPage() {
           const data = await res.json();
           setReminders(data.reminders.map((r: any) => ({
             ...r,
-            expiry_date: new Date(r.expiry_date).toLocaleString('zh-CN'),
+            expiry_date: new Date(r.expiry_date).toLocaleDateString('zh-CN'),
           })));
           setStats(data.stats);
           setTotalRecords(data.total || 0);
