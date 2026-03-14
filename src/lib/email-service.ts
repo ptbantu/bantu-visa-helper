@@ -6,12 +6,6 @@ import { convertPdfToImages, imageToQwenFormat } from '@/src/lib/pdf-to-image';
 import { parseITKDocument, validateITKDocument, type ITKDocumentData } from '@/src/lib/itk-parser';
 import { v4 as uuidv4 } from 'uuid';
 
-// 使用 require 导入 pdf-parse
-let pdfParseModule = require('pdf-parse');
-
-// 处理不同的导出方式
-const pdfParse = pdfParseModule.default || pdfParseModule;
-
 interface ParsedVisaData {
   customer_name: string;
   passport_no: string;
@@ -25,16 +19,6 @@ interface ParsedVisaData {
 interface PDFAttachment {
   filename: string;
   content: Buffer;
-}
-
-async function extractTextFromPDF(pdfBuffer: Buffer): Promise<string> {
-  try {
-    const data = await pdfParse(pdfBuffer);
-    return data.text;
-  } catch (error) {
-    console.error('提取 PDF 文本失败:', error);
-    throw error;
-  }
 }
 
 function cleanJsonString(str: string): string {
@@ -143,12 +127,18 @@ async function smartParseVisaData(pdfBuffer: Buffer, filename: string): Promise<
         console.warn('  ⚠ 不是 ITK 文档:', itkError.message);
         throw itkError;
       }
-      console.warn('  ⚠ ITK 解析失败，尝试其他方式:', itkError);
+      console.warn('  ⚠ ITK 解析失败，尝试图片识别:', itkError);
     }
 
-    // 降级到文本识别
-    const pdfText = await extractTextFromPDF(pdfBuffer);
-    return await parseWithQwen(pdfText);
+    // 降级到图片识别
+    console.log('  [3.1] 尝试使用图片识别...');
+    const images = await convertPdfToImages(pdfBuffer, filename);
+    if (images.length > 0) {
+      const qwenFormat = await imageToQwenFormat(images);
+      return await parseWithQwen(qwenFormat);
+    }
+
+    throw new Error('无法提取 PDF 内容');
   } catch (error) {
     if (error instanceof Error && error.message === 'Not an ITK document') {
       throw error;

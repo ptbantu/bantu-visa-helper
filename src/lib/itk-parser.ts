@@ -1,12 +1,12 @@
 import type { PDFDocument } from 'pdfjs-dist';
 
-// 使用 require 导入 pdf-parse
-let pdfParseModule = require('pdf-parse');
-
-// 处理不同的导出方式
-const pdfParse = pdfParseModule.default || pdfParseModule;
-
-export interface ITKDocumentData {
+/**
+ * 从 PDF Buffer 提取文本
+ * 注：在 Next.js 中 pdf-parse 导入有问题，改用图片识别方式
+ */
+async function extractTextFromPDF(pdfBuffer: Buffer): Promise<string> {
+  throw new Error('PDF 文本提取已禁用，请使用图片识别方式');
+}
   // 证件状态类
   permit_number?: string;
   expiry_date?: string;
@@ -42,15 +42,10 @@ export interface ITKDocumentData {
 
 /**
  * 从 PDF Buffer 提取文本
+ * 注：在 Next.js 中 pdf-parse 导入有问题，改用图片识别方式
  */
 async function extractTextFromPDF(pdfBuffer: Buffer): Promise<string> {
-  try {
-    const data = await pdfParse(pdfBuffer);
-    return data.text;
-  } catch (error) {
-    console.error('PDF 文本提取失败:', error);
-    throw error;
-  }
+  throw new Error('PDF 文本提取已禁用，请使用图片识别方式');
 }
 
 /**
@@ -58,6 +53,7 @@ async function extractTextFromPDF(pdfBuffer: Buffer): Promise<string> {
  */
 function isITKDocument(text: string): boolean {
   return text.includes('IZIN TINGGAL KUNJUNGAN') || text.includes('Visit Stay Permit');
+}
 }
 
 /**
