@@ -1,25 +1,43 @@
-export type VisaType = 'B211A' | 'C312' | 'C313' | 'C314' | 'Other';
+export type VisaTypeCode = 'B211A' | 'C312' | 'C313' | 'C314' | 'ITAS' | 'KITAS' | 'Unknown';
 export type VisaStatus = '有效' | '即将过期' | '已过期' | '处理中' | 'Active' | 'Expiring Soon' | 'Expired' | 'Processing';
 
-export interface VisaRecord {
-  passport_no: string;
-  expiry_date: string;
-  customer_name: string;
-  visa_type: string;
-  is_urgent: boolean;
-  entry_date?: string;
-  port_of_entry?: string;
-  phone?: string;
-  whatsapp?: string;
-  reminder_enabled?: boolean;
+export interface VisaType {
+  id: string;
+  code: string;
+  nameZh: string;
+  nameId: string;
+  requiresEntry?: boolean;
+  isActive?: boolean;
 }
 
 export interface Customer {
   id: string;
+  passport_no: string;
   name: string;
-  passport: string;
-  nationality: string;
-  company?: string;
+  phone?: string;
+  whatsapp?: string;
+}
+
+export interface VisaRecord {
+  id: string;
+  customerId: string;
+  customer?: Customer;
+  visaTypeCode: string;
+  visaType?: VisaType;
+  passport_no: string;
+  expiry_date: string;
+  is_urgent: boolean;
+  reminder_enabled?: boolean;
+  entry_date?: string;
+  port_of_entry?: string;
+  file_url?: string;
+  createdAt?: string;
+  updatedAt?: string;
+  // Legacy fields for backward compatibility
+  customer_name?: string;
+  visa_type?: string;
+  phone?: string;
+  whatsapp?: string;
 }
 
 export interface Visa {

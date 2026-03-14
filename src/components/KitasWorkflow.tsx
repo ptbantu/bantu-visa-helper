@@ -40,7 +40,7 @@ const steps = [
 
 export function KitasWorkflow({ record }: KitasWorkflowProps) {
   // Only show if it's an ITAS visa
-  if (!record.visa_type.includes("ITAS")) {
+  if (!record.visaType?.code?.includes("ITAS")) {
     return null;
   }
 
@@ -64,7 +64,7 @@ export function KitasWorkflow({ record }: KitasWorkflowProps) {
           </h3>
         </div>
         <Badge variant="outline" className="bg-slate-100 text-slate-700 border-slate-200">
-          {record.visa_type}
+          {record.visaType?.code || "N/A"}
         </Badge>
       </div>
 

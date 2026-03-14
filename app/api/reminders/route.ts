@@ -5,14 +5,21 @@ export async function GET(request: Request) {
   try {
     const { searchParams } = new URL(request.url);
     const stage = searchParams.get('stage') || 'all';
+    const limit = parseInt(searchParams.get('limit') || '20');
+    const offset = parseInt(searchParams.get('offset') || '0');
 
     const where: any = {};
     if (stage !== 'all') where.stage = { contains: stage };
 
-    const reminders = await prisma.reminder.findMany({
-      where,
-      orderBy: { days_left: 'asc' },
-    });
+    const [reminders, total] = await Promise.all([
+      prisma.reminder.findMany({
+        where,
+        orderBy: { days_left: 'asc' },
+        take: limit,
+        skip: offset,
+      }),
+      prisma.reminder.count({ where }),
+    ]);
 
     const stats = {
       stage1_count: await prisma.reminder.count({ where: { stage: { contains: '阶段一' } } }),
@@ -21,7 +28,7 @@ export async function GET(request: Request) {
       unacknowledged_count: await prisma.reminder.count({ where: { is_acknowledged: false } }),
     };
 
-    return NextResponse.json({ reminders, stats });
+    return NextResponse.json({ reminders, stats, total });
   } catch (error) {
     console.error('Error fetching reminders:', error);
     return NextResponse.json({ error: 'Failed to fetch reminders' }, { status: 500 });
@@ -32,6 +39,7 @@ export async function POST(request: Request) {
   try {
     const visas = await prisma.visaRecord.findMany({
       where: { reminder_enabled: true },
+      include: { customer: true, visaType: true },
     });
 
     const now = new Date();
@@ -57,9 +65,9 @@ export async function POST(request: Request) {
         await prisma.reminder.create({
           data: {
             visa_id: visa.id,
-            customer_name: visa.customer_name,
+            customer_name: visa.customer.name,
             passport_no: visa.passport_no,
-            visa_type: visa.visa_type,
+            visa_type: visa.visaType.code,
             expiry_date: visa.expiry_date,
             days_left: daysLeft,
             stage,

@@ -6,6 +6,7 @@ import { Search, Copy, Check, AlertCircle, Clock, FileText, User, Calendar, Edit
 import { differenceInDays, parseISO } from "date-fns";
 import { useLanguage } from "@/src/contexts/LanguageContext";
 import { formatVisaType } from "@/src/lib/visa-type-display";
+import { PaginationBar } from "@/src/components/PaginationBar";
 
 import { Input } from "@/src/components/ui/input";
 import { Button } from "@/src/components/ui/button";
@@ -28,7 +29,6 @@ import {
   TableHeader,
   TableRow,
 } from "@/src/components/ui/table";
-import { mockVisaData } from "@/src/data/mock";
 import { VisaRecord } from "@/src/types/api";
 import { KitasWorkflow } from "@/src/components/KitasWorkflow";
 import { EditContactDialog } from "@/src/components/EditContactDialog";
@@ -40,24 +40,30 @@ function KitasContent() {
   const searchParams = useSearchParams();
   const router = useRouter();
   const pathname = usePathname();
-  
+
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [copied, setCopied] = useState(false);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useState(20);
 
-  // Local state to simulate DB updates
   const [data, setData] = useState<VisaRecord[]>([]);
+  const [totalRecords, setTotalRecords] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
   const [editingRecord, setEditingRecord] = useState<VisaRecord | null>(null);
   const [selectedRecords, setSelectedRecords] = useState<Set<string>>(new Set());
 
+  // 获取数据
   useEffect(() => {
     const fetchVisas = async () => {
       try {
-        const response = await fetch('/api/visas?type=kitas');
+        setIsLoading(true);
+        const offset = (currentPage - 1) * pageSize;
+        const response = await fetch(`/api/visas?type=kitas&limit=${pageSize}&offset=${offset}`);
         if (response.ok) {
           const result = await response.json();
-          setData(result);
+          setData(result.data || []);
+          setTotalRecords(result.total || 0);
         }
       } catch (error) {
         console.error('Failed to fetch visas:', error);
@@ -66,27 +72,18 @@ function KitasContent() {
       }
     };
     fetchVisas();
-  }, []);
+  }, [currentPage, pageSize]);
 
   const passportIdFromUrl = searchParams.get("passport_id");
 
-  // If there's a passport_id in URL, find the selected record
   const selectedRecord = useMemo(() => {
     return data.find((r) => r.passport_no === passportIdFromUrl) || null;
   }, [passportIdFromUrl, data]);
 
-  // Filter data based on search query (name or passport_no)
+  // 本地过滤（搜索和状态）
   const filteredData = useMemo(() => {
-    // Only show ITAS/Work visas
-    let filtered = data.filter(
-      (r) => r.visaType?.code?.includes("ITAS") ||
-             r.visaType?.code?.includes("C31") ||
-             r.visaType?.code?.includes("C312") ||
-             r.visaType?.code?.includes("C313") ||
-             r.visaType?.code?.includes("C314")
-    );
+    let filtered = [...data];
 
-    // If there's a global search query, filter by it
     if (searchQuery) {
       const lowerQuery = searchQuery.toLowerCase();
       filtered = filtered.filter(
@@ -96,7 +93,6 @@ function KitasContent() {
       );
     }
 
-    // Filter by status
     if (statusFilter !== "all") {
       const today = new Date();
       filtered = filtered.filter((record) => {
@@ -108,7 +104,6 @@ function KitasContent() {
       });
     }
 
-    // If there's a passport_id in URL, filter to show ONLY that record
     if (passportIdFromUrl) {
       filtered = filtered.filter((record) => record.passport_no === passportIdFromUrl);
     }
@@ -158,15 +153,15 @@ function KitasContent() {
     const daysLeft = differenceInDays(parseISO(expiryDate), new Date());
 
     if (daysLeft < 0) {
-      return <Badge variant="destructive">已过期</Badge>;
+      return <Badge variant="destructive" className="text-[11px] py-0.5">已过期</Badge>;
     }
     if (daysLeft <= 30) {
-      return <Badge variant="destructive">即将过期 ({daysLeft}天)</Badge>;
+      return <Badge variant="destructive" className="text-[11px] py-0.5">即将过期 ({daysLeft}天)</Badge>;
     }
     if (isUrgent) {
-      return <Badge variant="warning">加急处理</Badge>;
+      return <Badge variant="warning" className="text-[11px] py-0.5">加急处理</Badge>;
     }
-    return <Badge variant="secondary">正常</Badge>;
+    return <Badge variant="secondary" className="text-[11px] py-0.5">正常</Badge>;
   };
 
   const toggleSelectAll = () => {
@@ -227,15 +222,15 @@ function KitasContent() {
   };
 
   return (
-    <div className="flex-1 flex flex-col bg-slate-50">
+    <div className="flex-1 flex flex-col bg-slate-50 h-screen">
       {/* Header */}
-      <header className="sticky top-0 z-30 flex h-14 items-center gap-4 border-b bg-white px-4 md:px-6 shadow-sm">
+      <header className="sticky top-0 z-30 flex h-14 items-center gap-4 border-b bg-white px-4 md:px-6 shadow-sm flex-shrink-0">
         <SidebarTrigger className="-ml-1" />
         <Separator orientation="vertical" className="mr-2 h-4" />
         <h1 className="text-lg font-semibold text-slate-900">{t('page.kitas.title')}</h1>
         <div className="ml-auto flex w-full max-w-md items-center space-x-2">
           <Select value={statusFilter} onValueChange={setStatusFilter}>
-            <SelectTrigger className="w-[140px] bg-white">
+            <SelectTrigger className="w-[140px] bg-white h-8 text-[13px]">
               <SelectValue placeholder="所有状态" />
             </SelectTrigger>
             <SelectContent>
@@ -250,11 +245,11 @@ function KitasContent() {
             <Input
               type="search"
               placeholder={t('search.placeholder')}
-              className="w-full bg-slate-100 pl-8 focus-visible:bg-white"
+              className="w-full bg-slate-100 pl-8 focus-visible:bg-white h-8 text-[13px]"
               value={searchQuery}
               onChange={(e) => {
                 setSearchQuery(e.target.value);
-                // Clear URL param when searching globally to reset view
+                setCurrentPage(1);
                 if (passportIdFromUrl) {
                   router.push(pathname);
                 }
@@ -266,135 +261,153 @@ function KitasContent() {
 
       {/* Main Content */}
       <main className="flex-1 p-4 md:p-6 overflow-hidden">
-        <div className="mx-auto max-w-full xl:max-w-7xl rounded-lg border bg-white shadow-sm overflow-hidden flex flex-col">
+        <div className="mx-auto max-w-full rounded-lg border bg-white shadow-sm overflow-hidden flex flex-col">
+          {/* 批量操作条 */}
           {selectedRecords.size > 0 && (
-            <div className="flex flex-wrap items-center justify-between bg-blue-50/50 px-4 py-2 border-b gap-2">
-              <span className="text-sm text-blue-700 font-medium">
+            <div className="flex flex-wrap items-center justify-between bg-blue-50/50 px-4 py-2 border-b gap-2 flex-shrink-0">
+              <span className="text-xs text-blue-700 font-medium">
                 已选择 {selectedRecords.size} 项
               </span>
               <div className="flex items-center gap-2">
-                <Button size="sm" variant="outline" className="h-8 bg-white" onClick={handleBulkDownload}>
-                  <FileDown className="mr-2 h-4 w-4" />
+                <Button size="sm" variant="outline" className="h-7 bg-white text-[12px]" onClick={handleBulkDownload}>
+                  <FileDown className="mr-1 h-3.5 w-3.5" />
                   批量下载
                 </Button>
-                <Button size="sm" variant="outline" className="h-8 bg-white" onClick={handleBulkEnableReminders}>
-                  <BellRing className="mr-2 h-4 w-4 text-green-600" />
+                <Button size="sm" variant="outline" className="h-7 bg-white text-[12px]" onClick={handleBulkEnableReminders}>
+                  <BellRing className="mr-1 h-3.5 w-3.5 text-green-600" />
                   开启提醒
                 </Button>
-                <Button size="sm" variant="outline" className="h-8 bg-white" onClick={handleBulkDisableReminders}>
-                  <BellOff className="mr-2 h-4 w-4 text-slate-400" />
+                <Button size="sm" variant="outline" className="h-7 bg-white text-[12px]" onClick={handleBulkDisableReminders}>
+                  <BellOff className="mr-1 h-3.5 w-3.5 text-slate-400" />
                   关闭提醒
                 </Button>
               </div>
             </div>
           )}
-          <div className="overflow-x-auto">
+
+          {/* 表格容器 - 固定高度，可滚动 */}
+          <div className="overflow-x-auto flex-1">
             <Table>
-              <TableHeader className="bg-slate-50">
-              <TableRow>
-                <TableHead className="w-[50px] text-center">
-                  <Checkbox 
-                    checked={filteredData.length > 0 && selectedRecords.size === filteredData.length}
-                    onCheckedChange={toggleSelectAll}
-                    aria-label="Select all"
-                  />
-                </TableHead>
-                <TableHead className="w-[50px] text-center">{t('table.edit')}</TableHead>
-                <TableHead className="w-auto whitespace-nowrap">{t('table.customer_name')}</TableHead>
-                <TableHead>{t('table.passport_no')}</TableHead>
-                <TableHead className="w-auto whitespace-nowrap">{t('table.visa_type')}</TableHead>
-                <TableHead>{t('table.expiry_date')}</TableHead>
-                <TableHead className="text-right">{t('table.days_left')}</TableHead>
-                <TableHead className="text-center">{t('table.status')}</TableHead>
-                <TableHead className="text-left w-[250px]">{t('table.download')}</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {isLoading ? (
-                <TableRow>
-                  <TableCell colSpan={9} className="h-24 text-center text-slate-500">
-                    加载中...
-                  </TableCell>
-                </TableRow>
-              ) : filteredData.length > 0 ? (
-                filteredData.map((record) => {
-                  const daysLeft = differenceInDays(parseISO(record.expiry_date), new Date());
-                  const isExpiredOrSoon = daysLeft <= 30;
-                  
-                  return (
-                    <TableRow
-                      key={record.passport_no}
-                      className={`cursor-pointer hover:bg-slate-50 ${selectedRecords.has(record.passport_no) ? "bg-blue-50/30" : ""}`}
-                      onClick={() => handleRowClick(record.passport_no)}
-                    >
-                      <TableCell className="text-center" onClick={(e) => e.stopPropagation()}>
-                        <Checkbox
-                          checked={selectedRecords.has(record.passport_no)}
-                          onCheckedChange={() => toggleSelectRecord(record.passport_no)}
-                          aria-label={`Select ${record.customer?.name}`}
-                        />
-                      </TableCell>
-                      <TableCell className="text-center" onClick={(e) => e.stopPropagation()}>
-                        <button
-                          onClick={() => setEditingRecord(record)}
-                          className="inline-flex items-center justify-center rounded-md text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50 hover:bg-slate-100 hover:text-slate-900 h-8 w-8 text-slate-500"
-                          title="编辑联系方式"
-                        >
-                          <Edit className="h-4 w-4" />
-                        </button>
-                      </TableCell>
-                      <TableCell className="font-medium whitespace-nowrap">{record.customer?.name}</TableCell>
-                      <TableCell className="font-mono text-slate-600">{record.passport_no}</TableCell>
-                      <TableCell className="whitespace-nowrap">
-                        <div className="flex items-center gap-2">
-                          {getVisaIcon(record.visaType)}
-                          <span>{formatVisaType(record.visaType, language as 'zh' | 'id')}</span>
-                        </div>
-                      </TableCell>
-                      <TableCell>{record.expiry_date}</TableCell>
-                      <TableCell className="text-right">
-                        <span className={isExpiredOrSoon ? "text-red-600 font-semibold" : "text-slate-600"}>
-                          {daysLeft < 0 ? "过期" : `${daysLeft} 天`}
-                        </span>
-                      </TableCell>
-                      <TableCell className="text-center">
-                        {getStatusBadge(record.expiry_date, record.is_urgent)}
-                      </TableCell>
-                      <TableCell className="text-left" onClick={(e) => e.stopPropagation()}>
-                        <button
-                          className="inline-flex items-center gap-1.5 rounded-md text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50 hover:text-blue-600 hover:underline text-slate-600 text-left"
-                          title="下载签证文件"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            const fileName = `${record.customer_name}${record.passport_no}${record.visa_type}.pdf`;
-                            const blob = new Blob(['Mock PDF content for ' + fileName], { type: 'application/pdf' });
-                            const url = URL.createObjectURL(blob);
-                            const a = document.createElement('a');
-                            a.href = url;
-                            a.download = fileName;
-                            document.body.appendChild(a);
-                            a.click();
-                            document.body.removeChild(a);
-                            URL.revokeObjectURL(url);
-                          }}
-                        >
-                          <FileDown className="h-4 w-4 shrink-0" />
-                          <span className="truncate max-w-[200px]">{record.customer_name}{record.passport_no}{record.visa_type}.pdf</span>
-                        </button>
-                      </TableCell>
-                    </TableRow>
-                  );
-                })
-              ) : (
-                <TableRow>
-                  <TableCell colSpan={9} className="h-24 text-center text-slate-500">
-                    未找到匹配的记录。
-                  </TableCell>
-                </TableRow>
-              )}
-            </TableBody>
-          </Table>
+                <TableHeader className="bg-slate-100 sticky top-0 z-10 shadow-sm">
+                  <TableRow>
+                  <TableHead className="w-[40px] text-center py-1.5 px-3 text-[13px] font-semibold text-slate-700">
+                    <Checkbox
+                      checked={filteredData.length > 0 && selectedRecords.size === filteredData.length}
+                      onCheckedChange={toggleSelectAll}
+                      aria-label="Select all"
+                    />
+                  </TableHead>
+                  <TableHead className="w-[40px] text-center py-1.5 px-3 text-[13px] font-semibold text-slate-700">{t('table.edit')}</TableHead>
+                  <TableHead className="py-1.5 px-3 text-[13px] font-semibold text-slate-700 whitespace-nowrap">{t('table.customer_name')}</TableHead>
+                  <TableHead className="py-1.5 px-3 text-[13px] font-semibold text-slate-700 whitespace-nowrap">{t('table.passport_no')}</TableHead>
+                  <TableHead className="py-1.5 px-3 text-[13px] font-semibold text-slate-700 whitespace-nowrap">{t('table.visa_type')}</TableHead>
+                  <TableHead className="py-1.5 px-3 text-[13px] font-semibold text-slate-700 whitespace-nowrap">{t('table.expiry_date')}</TableHead>
+                  <TableHead className="py-1.5 px-3 text-[13px] font-semibold text-slate-700 text-right whitespace-nowrap">{t('table.days_left')}</TableHead>
+                  <TableHead className="py-1.5 px-3 text-[13px] font-semibold text-slate-700 text-center whitespace-nowrap">{t('table.status')}</TableHead>
+                  <TableHead className="py-1.5 px-3 text-[13px] font-semibold text-slate-700 text-left">{t('table.download')}</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                {isLoading ? (
+                  <TableRow>
+                    <TableCell colSpan={9} className="h-20 text-center text-slate-500 text-[13px]">
+                      加载中...
+                    </TableCell>
+                  </TableRow>
+                ) : filteredData.length > 0 ? (
+                  filteredData.map((record, idx) => {
+                    const daysLeft = differenceInDays(parseISO(record.expiry_date), new Date());
+                    const isExpiredOrSoon = daysLeft <= 30;
+
+                    return (
+                      <TableRow
+                        key={record.id}
+                        className={`border-b border-slate-200 hover:bg-slate-50 cursor-pointer transition-colors ${
+                          idx % 2 === 1 ? 'bg-slate-50/40' : ''
+                        } ${selectedRecords.has(record.passport_no) ? "bg-blue-50/30" : ""}`}
+                        onClick={() => handleRowClick(record.passport_no)}
+                      >
+                        <TableCell className="text-center py-1.5 px-3" onClick={(e) => e.stopPropagation()}>
+                          <Checkbox
+                            checked={selectedRecords.has(record.passport_no)}
+                            onCheckedChange={() => toggleSelectRecord(record.passport_no)}
+                            aria-label={`Select ${record.customer?.name}`}
+                          />
+                        </TableCell>
+                        <TableCell className="text-center py-1.5 px-3" onClick={(e) => e.stopPropagation()}>
+                          <button
+                            onClick={() => setEditingRecord(record)}
+                            className="inline-flex items-center justify-center rounded-md text-xs font-medium transition-colors hover:bg-slate-100 hover:text-slate-900 h-7 w-7 text-slate-500"
+                            title="编辑联系方式"
+                          >
+                            <Edit className="h-3.5 w-3.5" />
+                          </button>
+                        </TableCell>
+                        <TableCell className="py-1.5 px-3 text-[13px] font-medium text-slate-900 whitespace-nowrap">{record.customer?.name}</TableCell>
+                        <TableCell className="py-1.5 px-3 text-[13px] font-mono text-slate-600 whitespace-nowrap">{record.passport_no}</TableCell>
+                        <TableCell className="py-1.5 px-3 text-[13px] text-slate-900 whitespace-nowrap">
+                          <div className="flex items-center gap-1.5">
+                            {getVisaIcon(record.visaType)}
+                            <span>{formatVisaType(record.visaType, language as 'zh' | 'id')}</span>
+                          </div>
+                        </TableCell>
+                        <TableCell className="py-1.5 px-3 text-[13px] text-slate-600 whitespace-nowrap">{record.expiry_date}</TableCell>
+                        <TableCell className="py-1.5 px-3 text-[13px] text-right whitespace-nowrap">
+                          <span className={isExpiredOrSoon ? "text-red-600 font-semibold" : "text-slate-600"}>
+                            {daysLeft < 0 ? "过期" : `${daysLeft} 天`}
+                          </span>
+                        </TableCell>
+                        <TableCell className="py-1.5 px-3 text-center whitespace-nowrap">
+                          {getStatusBadge(record.expiry_date, record.is_urgent)}
+                        </TableCell>
+                        <TableCell className="py-1.5 px-3 text-left" onClick={(e) => e.stopPropagation()}>
+                          <button
+                            className="inline-flex items-center gap-1 rounded-md text-[13px] font-medium transition-colors hover:text-blue-600 hover:underline text-slate-600 text-left"
+                            title="下载签证文件"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              const fileName = `${record.customer?.name}${record.passport_no}${record.visaType?.nameZh}.pdf`;
+                              const blob = new Blob(['Mock PDF content for ' + fileName], { type: 'application/pdf' });
+                              const url = URL.createObjectURL(blob);
+                              const a = document.createElement('a');
+                              a.href = url;
+                              a.download = fileName;
+                              document.body.appendChild(a);
+                              a.click();
+                              document.body.removeChild(a);
+                              URL.revokeObjectURL(url);
+                            }}
+                          >
+                            <FileDown className="h-3.5 w-3.5 shrink-0" />
+                            <span className="truncate max-w-[150px]">{record.customer?.name}{record.passport_no}.pdf</span>
+                          </button>
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })
+                ) : (
+                  <TableRow>
+                    <TableCell colSpan={9} className="h-20 text-center text-slate-500 text-[13px]">
+                      未找到匹配的记录。
+                    </TableCell>
+                  </TableRow>
+                )}
+                </TableBody>
+              </Table>
           </div>
+
+          {/* 分页条 - 固定在底部 */}
+          <PaginationBar
+            current={currentPage}
+            total={totalRecords}
+            pageSize={pageSize}
+            onPageChange={setCurrentPage}
+            onPageSizeChange={(size) => {
+              setPageSize(size);
+              setCurrentPage(1);
+            }}
+            loading={isLoading}
+          />
         </div>
       </main>
 
@@ -416,7 +429,7 @@ function KitasContent() {
           <div className="mt-6 flex flex-col gap-6">
             <div className="flex items-center justify-between">
               {getStatusBadge(selectedRecord.expiry_date, selectedRecord.is_urgent)}
-              <Button variant="outline" size="sm" onClick={handleCopyLink} className="h-8">
+              <Button variant="outline" size="sm" onClick={handleCopyLink} className="h-8 text-[13px]">
                 {copied ? <Check className="mr-2 h-4 w-4 text-green-600" /> : <Copy className="mr-2 h-4 w-4" />}
                 {copied ? "已复制" : "复制链接"}
               </Button>

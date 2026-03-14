@@ -13,6 +13,7 @@ import { Badge } from "@/src/components/ui/badge";
 import { Sheet } from "@/src/components/ui/sheet";
 import { Separator } from "@/src/components/ui/separator";
 import { Checkbox } from "@/src/components/ui/checkbox";
+import { PaginationBar } from "@/src/components/PaginationBar";
 import {
   Select,
   SelectContent,
@@ -60,24 +61,29 @@ function DashboardContent() {
   const searchParams = useSearchParams();
   const router = useRouter();
   const pathname = usePathname();
-  
+
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [copied, setCopied] = useState(false);
-  
+
   // Local state to simulate DB updates
   const [data, setData] = useState<VisaRecord[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [editingRecord, setEditingRecord] = useState<VisaRecord | null>(null);
   const [selectedRecords, setSelectedRecords] = useState<Set<string>>(new Set());
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useState(20);
+  const [totalRecords, setTotalRecords] = useState(0);
 
   useEffect(() => {
     const fetchVisas = async () => {
       try {
-        const response = await fetch('/api/visas?type=b211a');
+        const offset = (currentPage - 1) * pageSize;
+        const response = await fetch(`/api/visas?type=b211a&limit=${pageSize}&offset=${offset}`);
         if (response.ok) {
           const result = await response.json();
-          setData(result);
+          setData(result.data || []);
+          setTotalRecords(result.total || 0);
         }
       } catch (error) {
         console.error('Failed to fetch visas:', error);
@@ -86,7 +92,7 @@ function DashboardContent() {
       }
     };
     fetchVisas();
-  }, []);
+  }, [currentPage, pageSize]);
 
   const passportIdFromUrl = searchParams.get("passport_id");
 
@@ -97,14 +103,7 @@ function DashboardContent() {
 
   // Filter data based on search query (name or passport_no)
   const filteredData = useMemo(() => {
-    // Only show B211A or non-ITAS/Work visas
-    let filtered = data.filter(
-      (r) => !r.visaType?.code?.includes("ITAS") &&
-             !r.visaType?.code?.includes("C31") &&
-             !r.visaType?.code?.includes("C312") &&
-             !r.visaType?.code?.includes("C313") &&
-             !r.visaType?.code?.includes("C314")
-    );
+    let filtered = [...data];
 
     // If there's a global search query, filter by it
     if (searchQuery) {
@@ -286,7 +285,7 @@ function DashboardContent() {
 
       {/* Main Content */}
       <main className="flex-1 p-4 md:p-6 overflow-hidden">
-        <div className="mx-auto max-w-full xl:max-w-7xl rounded-lg border bg-white shadow-sm overflow-hidden flex flex-col">
+        <div className="mx-auto max-w-full rounded-lg border bg-white shadow-sm overflow-hidden flex flex-col">
           {selectedRecords.size > 0 && (
             <div className="flex flex-wrap items-center justify-between bg-blue-50/50 px-4 py-2 border-b gap-2">
               <span className="text-sm text-blue-700 font-medium">
@@ -308,53 +307,55 @@ function DashboardContent() {
               </div>
             </div>
           )}
-          <div className="overflow-x-auto">
+          <div className="overflow-x-auto flex-1">
             <Table>
-              <TableHeader className="bg-slate-50">
+              <TableHeader className="bg-slate-100 sticky top-0 z-10 shadow-sm">
               <TableRow>
-                <TableHead className="w-[50px] text-center">
-                  <Checkbox 
+                <TableHead className="py-1.5 px-3 text-[13px] font-semibold text-slate-700 w-[50px] text-center">
+                  <Checkbox
                     checked={filteredData.length > 0 && selectedRecords.size === filteredData.length}
                     onCheckedChange={toggleSelectAll}
                     aria-label="Select all"
                   />
                 </TableHead>
-                <TableHead className="w-[50px] text-center">{t('table.edit')}</TableHead>
-                <TableHead className="w-auto whitespace-nowrap">{t('table.customer_name')}</TableHead>
-                <TableHead>{t('table.passport_no')}</TableHead>
-                <TableHead className="w-auto whitespace-nowrap">{t('table.visa_type')}</TableHead>
-                <TableHead>{t('table.expiry_date')}</TableHead>
-                <TableHead className="text-right">{t('table.days_left')}</TableHead>
-                <TableHead className="text-center">{t('table.status')}</TableHead>
-                <TableHead className="text-left w-[250px]">{t('table.download')}</TableHead>
+                <TableHead className="py-1.5 px-3 text-[13px] font-semibold text-slate-700 w-[50px] text-center">{t('table.edit')}</TableHead>
+                <TableHead className="py-1.5 px-3 text-[13px] font-semibold text-slate-700 w-auto whitespace-nowrap">{t('table.customer_name')}</TableHead>
+                <TableHead className="py-1.5 px-3 text-[13px] font-semibold text-slate-700">{t('table.passport_no')}</TableHead>
+                <TableHead className="py-1.5 px-3 text-[13px] font-semibold text-slate-700 w-auto whitespace-nowrap">{t('table.visa_type')}</TableHead>
+                <TableHead className="py-1.5 px-3 text-[13px] font-semibold text-slate-700">{t('table.expiry_date')}</TableHead>
+                <TableHead className="py-1.5 px-3 text-[13px] font-semibold text-slate-700 text-right">{t('table.days_left')}</TableHead>
+                <TableHead className="py-1.5 px-3 text-[13px] font-semibold text-slate-700 text-center">{t('table.status')}</TableHead>
+                <TableHead className="py-1.5 px-3 text-[13px] font-semibold text-slate-700 text-left w-[250px]">{t('table.download')}</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {isLoading ? (
                 <TableRow>
-                  <TableCell colSpan={9} className="h-24 text-center text-slate-500">
+                  <TableCell colSpan={9} className="h-24 text-center text-slate-500 py-1.5 px-3 text-[13px]">
                     加载中...
                   </TableCell>
                 </TableRow>
               ) : filteredData.length > 0 ? (
-                filteredData.map((record) => {
+                filteredData.map((record, idx) => {
                   const daysLeft = differenceInDays(parseISO(record.expiry_date), new Date());
                   const isExpiredOrSoon = daysLeft <= 30;
-                  
+
                   return (
                     <TableRow
-                      key={record.passport_no}
-                      className={`cursor-pointer hover:bg-slate-50 ${selectedRecords.has(record.passport_no) ? "bg-blue-50/30" : ""}`}
+                      key={record.id}
+                      className={`border-b border-slate-200 hover:bg-slate-50 cursor-pointer ${
+                        idx % 2 === 1 ? 'bg-slate-50/40' : ''
+                      } ${selectedRecords.has(record.passport_no) ? "bg-blue-50/30" : ""}`}
                       onClick={() => handleRowClick(record.passport_no)}
                     >
-                      <TableCell className="text-center" onClick={(e) => e.stopPropagation()}>
+                      <TableCell className="py-1.5 px-3 text-[13px] text-center" onClick={(e) => e.stopPropagation()}>
                         <Checkbox
                           checked={selectedRecords.has(record.passport_no)}
                           onCheckedChange={() => toggleSelectRecord(record.passport_no)}
                           aria-label={`Select ${record.customer?.name}`}
                         />
                       </TableCell>
-                      <TableCell className="text-center" onClick={(e) => e.stopPropagation()}>
+                      <TableCell className="py-1.5 px-3 text-[13px] text-center" onClick={(e) => e.stopPropagation()}>
                         <button
                           onClick={() => setEditingRecord(record)}
                           className="inline-flex items-center justify-center rounded-md text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50 hover:bg-slate-100 hover:text-slate-900 h-8 w-8 text-slate-500"
@@ -363,24 +364,24 @@ function DashboardContent() {
                           <Edit className="h-4 w-4" />
                         </button>
                       </TableCell>
-                      <TableCell className="font-medium whitespace-nowrap">{record.customer?.name}</TableCell>
-                      <TableCell className="font-mono text-slate-600">{record.passport_no}</TableCell>
-                      <TableCell className="whitespace-nowrap">
+                      <TableCell className="py-1.5 px-3 text-[13px] font-medium whitespace-nowrap">{record.customer?.name}</TableCell>
+                      <TableCell className="py-1.5 px-3 text-[13px] font-mono text-slate-600">{record.passport_no}</TableCell>
+                      <TableCell className="py-1.5 px-3 text-[13px] whitespace-nowrap">
                         <div className="flex items-center gap-2">
                           {getVisaIcon(record.visaType)}
                           <span>{formatVisaType(record.visaType, language as 'zh' | 'id')}</span>
                         </div>
                       </TableCell>
-                      <TableCell>{record.expiry_date}</TableCell>
-                      <TableCell className="text-right">
+                      <TableCell className="py-1.5 px-3 text-[13px]">{record.expiry_date}</TableCell>
+                      <TableCell className="py-1.5 px-3 text-[13px] text-right">
                         <span className={isExpiredOrSoon ? "text-red-600 font-semibold" : "text-slate-600"}>
                           {daysLeft < 0 ? "过期" : `${daysLeft} 天`}
                         </span>
                       </TableCell>
-                      <TableCell className="text-center">
+                      <TableCell className="py-1.5 px-3 text-[13px] text-center">
                         {getStatusBadge(record.expiry_date, record.is_urgent)}
                       </TableCell>
-                      <TableCell className="text-left" onClick={(e) => e.stopPropagation()}>
+                      <TableCell className="py-1.5 px-3 text-[13px] text-left" onClick={(e) => e.stopPropagation()}>
                         <button
                           className="inline-flex items-center gap-1.5 rounded-md text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50 hover:text-blue-600 hover:underline text-slate-600 text-left"
                           title="下载签证文件"
@@ -407,7 +408,7 @@ function DashboardContent() {
                 })
               ) : (
                 <TableRow>
-                  <TableCell colSpan={9} className="h-24 text-center text-slate-500">
+                  <TableCell colSpan={9} className="h-24 text-center text-slate-500 py-1.5 px-3 text-[13px]">
                     未找到匹配的记录。
                   </TableCell>
                 </TableRow>
@@ -415,6 +416,17 @@ function DashboardContent() {
             </TableBody>
           </Table>
           </div>
+          <PaginationBar
+            current={currentPage}
+            total={totalRecords}
+            pageSize={pageSize}
+            onPageChange={setCurrentPage}
+            onPageSizeChange={(size) => {
+              setPageSize(size);
+              setCurrentPage(1);
+            }}
+            loading={isLoading}
+          />
         </div>
       </main>
 

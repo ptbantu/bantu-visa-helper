@@ -5,6 +5,8 @@ export async function GET(request: Request) {
   try {
     const { searchParams } = new URL(request.url);
     const type = searchParams.get('type');
+    const limit = parseInt(searchParams.get('limit') || '20');
+    const offset = parseInt(searchParams.get('offset') || '0');
 
     let whereClause: any = {};
     if (type === 'kitas') {
@@ -21,16 +23,21 @@ export async function GET(request: Request) {
       };
     }
 
-    const visas = await prisma.visaRecord.findMany({
-      where: whereClause,
-      include: {
-        customer: true,
-        visaType: true,
-      },
-      orderBy: { expiry_date: 'asc' }
-    });
+    const [visas, total] = await Promise.all([
+      prisma.visaRecord.findMany({
+        where: whereClause,
+        include: {
+          customer: true,
+          visaType: true,
+        },
+        orderBy: { expiry_date: 'asc' },
+        take: limit,
+        skip: offset,
+      }),
+      prisma.visaRecord.count({ where: whereClause }),
+    ]);
 
-    return NextResponse.json(visas);
+    return NextResponse.json({ data: visas, total });
   } catch (error) {
     console.error('Error fetching visas:', error);
     return NextResponse.json({ error: 'Failed to fetch visas' }, { status: 500 });
