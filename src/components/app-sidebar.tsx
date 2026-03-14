@@ -64,6 +64,12 @@ export function AppSidebar() {
                 </SidebarMenuButton>
               </SidebarMenuItem>
               <SidebarMenuItem>
+                <SidebarMenuButton render={<Link href="/visa-dict" />} isActive={pathname === "/visa-dict"} tooltip={t('nav.visa_dict')}>
+                  <BookOpen className="h-4 w-4" />
+                  <span>{t('nav.visa_dict')}</span>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
+              <SidebarMenuItem>
                 <SidebarMenuButton render={<Link href="/settings" />} isActive={pathname === "/settings"} tooltip={t('nav.settings')}>
                   <Settings className="h-4 w-4" />
                   <span>{t('nav.settings')}</span>
@@ -87,12 +93,6 @@ export function AppSidebar() {
                 <SidebarMenuButton render={<Link href="/kitas" />} isActive={pathname === "/kitas"} tooltip={t('nav.kitas')}>
                   <Briefcase className="h-4 w-4" />
                   <span>{t('nav.kitas')}</span>
-                </SidebarMenuButton>
-              </SidebarMenuItem>
-              <SidebarMenuItem>
-                <SidebarMenuButton render={<Link href="/visa-dict" />} isActive={pathname === "/visa-dict"} tooltip={t('nav.visa_dict')}>
-                  <BookOpen className="h-4 w-4" />
-                  <span>{t('nav.visa_dict')}</span>
                 </SidebarMenuButton>
               </SidebarMenuItem>
             </SidebarMenu>
